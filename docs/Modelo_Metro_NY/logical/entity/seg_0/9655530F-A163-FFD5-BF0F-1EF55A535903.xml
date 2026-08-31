@@ -1,0 +1,166 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<Entity class="oracle.dbtools.crest.model.design.logical.Entity" directorySegmentName="seg_0" id="9655530F-A163-FFD5-BF0F-1EF55A535903" name="EMPLEADO">
+<createdBy>checharodck</createdBy>
+<createdTime>2026-08-31 03:27:45 UTC</createdTime>
+<ownerDesignName>Modelo_Metro_NY</ownerDesignName>
+<engineerTo>
+<item key="2FF66B82-1F50-7F3B-F0C3-A90A0ACB628C" value="true"/>
+</engineerTo>
+<adequatelyNormalized>NO</adequatelyNormalized>
+<expectedVolumes>0</expectedVolumes>
+<fwdEngineeringStrategyName>Single Table</fwdEngineeringStrategyName>
+<growthPercent>0</growthPercent>
+<growthType>Year</growthType>
+<maxVolumes>9999999</maxVolumes>
+<minVolumes>0</minVolumes>
+<normalForm>Third</normalForm>
+<shortName>EMP</shortName>
+<synonym>TRABAJADOR, COLABORADOR</synonym>
+<attributes itemClass="oracle.dbtools.crest.model.design.logical.Attribute">
+<Attribute name="id_empleado" id="F945F59E-71CC-B68B-AE4B-AD6D91F372EC">
+<createdBy>checharodck</createdBy>
+<createdTime>2026-08-31 03:28:09 UTC</createdTime>
+<ownerDesignName>Modelo_Metro_NY</ownerDesignName>
+<engineerTo>
+<item key="2FF66B82-1F50-7F3B-F0C3-A90A0ACB628C" value="true"/>
+</engineerTo>
+<useDomainConstraints>false</useDomainConstraints>
+<use>1</use>
+<logicalDatatype>LOGDT019</logicalDatatype>
+<dataTypePrecision>10</dataTypePrecision>
+<ownDataTypeParameters>,10,</ownDataTypeParameters>
+</Attribute>
+<Attribute name="nombre_completo" id="7BFC8234-DB23-0BD6-DECC-4722984CE24A">
+<createdBy>checharodck</createdBy>
+<createdTime>2026-08-31 03:28:31 UTC</createdTime>
+<ownerDesignName>Modelo_Metro_NY</ownerDesignName>
+<engineerTo>
+<item key="2FF66B82-1F50-7F3B-F0C3-A90A0ACB628C" value="true"/>
+</engineerTo>
+<useDomainConstraints>false</useDomainConstraints>
+<use>1</use>
+<logicalDatatype>LOGDT024</logicalDatatype>
+<dataTypeSize>150 CHAR</dataTypeSize>
+<ownDataTypeParameters>150 CHAR,,</ownDataTypeParameters>
+</Attribute>
+<Attribute name="fecha_nacimiento" id="DFD57A80-8CF6-5AEF-2543-5D7330881895">
+<createdBy>checharodck</createdBy>
+<createdTime>2026-08-31 03:28:56 UTC</createdTime>
+<ownerDesignName>Modelo_Metro_NY</ownerDesignName>
+<engineerTo>
+<item key="2FF66B82-1F50-7F3B-F0C3-A90A0ACB628C" value="true"/>
+</engineerTo>
+<useDomainConstraints>false</useDomainConstraints>
+<use>1</use>
+<logicalDatatype>LOGDT007</logicalDatatype>
+<ownDataTypeParameters>,,</ownDataTypeParameters>
+</Attribute>
+<Attribute name="direccion" id="17472837-2CE8-2D01-F19D-344A77073D4F">
+<createdBy>checharodck</createdBy>
+<createdTime>2026-08-31 03:29:12 UTC</createdTime>
+<ownerDesignName>Modelo_Metro_NY</ownerDesignName>
+<engineerTo>
+<item key="2FF66B82-1F50-7F3B-F0C3-A90A0ACB628C" value="true"/>
+</engineerTo>
+<useDomainConstraints>false</useDomainConstraints>
+<use>1</use>
+<logicalDatatype>LOGDT024</logicalDatatype>
+<dataTypeSize>200 CHAR</dataTypeSize>
+<ownDataTypeParameters>200 CHAR,,</ownDataTypeParameters>
+</Attribute>
+<Attribute name="telefono" id="8EB76489-663C-0F89-5B11-467194487EAF">
+<createdBy>checharodck</createdBy>
+<createdTime>2026-08-31 03:30:04 UTC</createdTime>
+<ownerDesignName>Modelo_Metro_NY</ownerDesignName>
+<engineerTo>
+<item key="2FF66B82-1F50-7F3B-F0C3-A90A0ACB628C" value="true"/>
+</engineerTo>
+<useDomainConstraints>false</useDomainConstraints>
+<use>1</use>
+<logicalDatatype>LOGDT024</logicalDatatype>
+<dataTypeSize>20 CHAR</dataTypeSize>
+<ownDataTypeParameters>20 CHAR,,</ownDataTypeParameters>
+</Attribute>
+<Attribute name="correo_electronico" id="4BAFE089-98EF-EC71-8F05-AF0C9B646082">
+<createdBy>checharodck</createdBy>
+<createdTime>2026-08-31 03:30:25 UTC</createdTime>
+<ownerDesignName>Modelo_Metro_NY</ownerDesignName>
+<engineerTo>
+<item key="2FF66B82-1F50-7F3B-F0C3-A90A0ACB628C" value="true"/>
+</engineerTo>
+<useDomainConstraints>false</useDomainConstraints>
+<use>1</use>
+<logicalDatatype>LOGDT024</logicalDatatype>
+<dataTypeSize>100 CHAR</dataTypeSize>
+<ownDataTypeParameters>100 CHAR,,</ownDataTypeParameters>
+</Attribute>
+<Attribute name="fecha_contratacion" id="1A3C93A9-0CC2-FF2F-B031-2D54DDFD83A3">
+<createdBy>checharodck</createdBy>
+<createdTime>2026-08-31 03:30:49 UTC</createdTime>
+<ownerDesignName>Modelo_Metro_NY</ownerDesignName>
+<engineerTo>
+<item key="2FF66B82-1F50-7F3B-F0C3-A90A0ACB628C" value="true"/>
+</engineerTo>
+<useDomainConstraints>false</useDomainConstraints>
+<use>1</use>
+<logicalDatatype>LOGDT007</logicalDatatype>
+<ownDataTypeParameters>,,</ownDataTypeParameters>
+</Attribute>
+<Attribute name="salario" id="ED6EAAFB-F796-8DCE-E539-F464A594C983">
+<createdBy>checharodck</createdBy>
+<createdTime>2026-08-31 03:31:11 UTC</createdTime>
+<ownerDesignName>Modelo_Metro_NY</ownerDesignName>
+<engineerTo>
+<item key="2FF66B82-1F50-7F3B-F0C3-A90A0ACB628C" value="true"/>
+</engineerTo>
+<useDomainConstraints>false</useDomainConstraints>
+<use>1</use>
+<logicalDatatype>LOGDT019</logicalDatatype>
+<dataTypePrecision>10</dataTypePrecision>
+<dataTypeScale>2</dataTypeScale>
+<ownDataTypeParameters>,10,2</ownDataTypeParameters>
+</Attribute>
+<Attribute name="estado_laboral" id="4EF8E2E6-4231-270D-CE19-FD1734A18D38">
+<createdBy>checharodck</createdBy>
+<createdTime>2026-08-31 03:31:31 UTC</createdTime>
+<ownerDesignName>Modelo_Metro_NY</ownerDesignName>
+<engineerTo>
+<item key="2FF66B82-1F50-7F3B-F0C3-A90A0ACB628C" value="true"/>
+</engineerTo>
+<useDomainConstraints>false</useDomainConstraints>
+<use>1</use>
+<logicalDatatype>LOGDT024</logicalDatatype>
+<dataTypeSize>30 CHAR</dataTypeSize>
+<ownDataTypeParameters>30 CHAR,,</ownDataTypeParameters>
+</Attribute>
+<Attribute name="id_cargo" id="1A916BDE-29EB-03CE-E609-3A7FCA750F07">
+<createdBy>checharodck</createdBy>
+<createdTime>2026-08-31 05:35:00 UTC</createdTime>
+<generatorID>81FACACE-D9B5-D6CE-7258-06FD649AD0F0</generatorID>
+<ownerDesignName>Modelo_Metro_NY</ownerDesignName>
+<engineerTo>
+<item key="2FF66B82-1F50-7F3B-F0C3-A90A0ACB628C" value="true"/>
+</engineerTo>
+<referedAttribute>B3C854C1-4E8F-6A51-2BA6-EE9BDA45B79D</referedAttribute>
+<useDomainConstraints>false</useDomainConstraints>
+<use>1</use>
+<logicalDatatype>LOGDT019</logicalDatatype>
+<dataTypePrecision>5</dataTypePrecision>
+<ownDataTypeParameters>,,</ownDataTypeParameters>
+</Attribute>
+</attributes>
+<identifiers itemClass="oracle.dbtools.crest.model.design.logical.CandidateKey">
+<identifier id="480B4E0D-5EB7-F391-B14F-5456F38398D9" name="EMPLEADO PK">
+<createdBy>checharodck</createdBy>
+<createdTime>2026-08-31 03:28:29 UTC</createdTime>
+<ownerDesignName>Modelo_Metro_NY</ownerDesignName>
+<engineerTo>
+<item key="2FF66B82-1F50-7F3B-F0C3-A90A0ACB628C" value="true"/>
+</engineerTo>
+<pk>true</pk>
+<usedAttributes>
+<attributeRef>F945F59E-71CC-B68B-AE4B-AD6D91F372EC</attributeRef>
+</usedAttributes>
+</identifier>
+</identifiers>
+</Entity>

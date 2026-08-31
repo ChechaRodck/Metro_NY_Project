@@ -1,0 +1,8 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<OSDM_Design class="oracle.dbtools.crest.model.design.Design" name="Modelo_Metro_NY" id="DC6B46F7-9DA0-6D2D-4B17-43681ED2C1FD" version="3.5">
+<createdBy>checharodck</createdBy>
+<createdTime>2026-08-31 02:18:53 UTC</createdTime>
+<ownerDesignName>Modelo_Metro_NY</ownerDesignName>
+<capitalNames>false</capitalNames>
+<designId>DC6B46F7-9DA0-6D2D-4B17-43681ED2C1FD</designId>
+</OSDM_Design>

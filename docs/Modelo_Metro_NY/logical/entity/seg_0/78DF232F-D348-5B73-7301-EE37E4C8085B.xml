@@ -1,0 +1,181 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<Entity class="oracle.dbtools.crest.model.design.logical.Entity" directorySegmentName="seg_0" id="78DF232F-D348-5B73-7301-EE37E4C8085B" name="VIAJE_PROGRAMADO">
+<createdBy>checharodck</createdBy>
+<createdTime>2026-08-31 05:58:02 UTC</createdTime>
+<ownerDesignName>Modelo_Metro_NY</ownerDesignName>
+<engineerTo>
+<item key="2FF66B82-1F50-7F3B-F0C3-A90A0ACB628C" value="true"/>
+</engineerTo>
+<adequatelyNormalized>NO</adequatelyNormalized>
+<expectedVolumes>0</expectedVolumes>
+<fwdEngineeringStrategyName>Single Table</fwdEngineeringStrategyName>
+<growthPercent>0</growthPercent>
+<growthType>Year</growthType>
+<maxVolumes>9999999</maxVolumes>
+<minVolumes>0</minVolumes>
+<normalForm>Third</normalForm>
+<shortName>VPR</shortName>
+<synonym>DESPACHO, VIAJE_ASIGNADO</synonym>
+<attributes itemClass="oracle.dbtools.crest.model.design.logical.Attribute">
+<Attribute name="numero_viaje" id="2122A6F9-E348-5C56-D135-79402B7CA90F">
+<createdBy>checharodck</createdBy>
+<createdTime>2026-08-31 05:58:37 UTC</createdTime>
+<ownerDesignName>Modelo_Metro_NY</ownerDesignName>
+<engineerTo>
+<item key="2FF66B82-1F50-7F3B-F0C3-A90A0ACB628C" value="true"/>
+</engineerTo>
+<useDomainConstraints>false</useDomainConstraints>
+<use>1</use>
+<logicalDatatype>LOGDT019</logicalDatatype>
+<dataTypePrecision>15</dataTypePrecision>
+<ownDataTypeParameters>,15,</ownDataTypeParameters>
+</Attribute>
+<Attribute name="fecha" id="516F1D8E-C4FA-AEC8-0D42-A66C8B2D2DCE">
+<createdBy>checharodck</createdBy>
+<createdTime>2026-08-31 05:59:04 UTC</createdTime>
+<ownerDesignName>Modelo_Metro_NY</ownerDesignName>
+<engineerTo>
+<item key="2FF66B82-1F50-7F3B-F0C3-A90A0ACB628C" value="true"/>
+</engineerTo>
+<useDomainConstraints>false</useDomainConstraints>
+<use>1</use>
+<logicalDatatype>LOGDT007</logicalDatatype>
+<ownDataTypeParameters>,,</ownDataTypeParameters>
+</Attribute>
+<Attribute name="hora_programada_salida" id="40461E7F-1407-1B1B-3A86-359BC6EAB5F0">
+<createdBy>checharodck</createdBy>
+<createdTime>2026-08-31 05:59:16 UTC</createdTime>
+<ownerDesignName>Modelo_Metro_NY</ownerDesignName>
+<engineerTo>
+<item key="2FF66B82-1F50-7F3B-F0C3-A90A0ACB628C" value="true"/>
+</engineerTo>
+<useDomainConstraints>false</useDomainConstraints>
+<use>1</use>
+<logicalDatatype>LOGDT024</logicalDatatype>
+<dataTypeSize>5 CHAR</dataTypeSize>
+<ownDataTypeParameters>5 CHAR,,</ownDataTypeParameters>
+</Attribute>
+<Attribute name="hora_real_salida" id="4DFD111D-2A1D-E510-D115-2F65B9DFC04D">
+<createdBy>checharodck</createdBy>
+<createdTime>2026-08-31 05:59:59 UTC</createdTime>
+<ownerDesignName>Modelo_Metro_NY</ownerDesignName>
+<engineerTo>
+<item key="2FF66B82-1F50-7F3B-F0C3-A90A0ACB628C" value="true"/>
+</engineerTo>
+<useDomainConstraints>false</useDomainConstraints>
+<use>1</use>
+<logicalDatatype>LOGDT007</logicalDatatype>
+<ownDataTypeParameters>,,</ownDataTypeParameters>
+</Attribute>
+<Attribute name="hora_programada_llegada" id="24B148E4-ABD3-0161-44FC-6FFB98C25EC1">
+<createdBy>checharodck</createdBy>
+<createdTime>2026-08-31 06:00:13 UTC</createdTime>
+<ownerDesignName>Modelo_Metro_NY</ownerDesignName>
+<engineerTo>
+<item key="2FF66B82-1F50-7F3B-F0C3-A90A0ACB628C" value="true"/>
+</engineerTo>
+<useDomainConstraints>false</useDomainConstraints>
+<use>1</use>
+<logicalDatatype>LOGDT024</logicalDatatype>
+<dataTypeSize>5 CHAR</dataTypeSize>
+<ownDataTypeParameters>5 CHAR,,</ownDataTypeParameters>
+</Attribute>
+<Attribute name="hora_real_llegada" id="86BD8005-2538-612B-C643-5216F662B456">
+<createdBy>checharodck</createdBy>
+<createdTime>2026-08-31 06:00:40 UTC</createdTime>
+<ownerDesignName>Modelo_Metro_NY</ownerDesignName>
+<engineerTo>
+<item key="2FF66B82-1F50-7F3B-F0C3-A90A0ACB628C" value="true"/>
+</engineerTo>
+<useDomainConstraints>false</useDomainConstraints>
+<use>1</use>
+<logicalDatatype>LOGDT007</logicalDatatype>
+<ownDataTypeParameters>,,</ownDataTypeParameters>
+</Attribute>
+<Attribute name="estado_viaje" id="44AE44D5-151F-3D24-42D6-03F43473B461">
+<createdBy>checharodck</createdBy>
+<createdTime>2026-08-31 06:01:17 UTC</createdTime>
+<ownerDesignName>Modelo_Metro_NY</ownerDesignName>
+<engineerTo>
+<item key="2FF66B82-1F50-7F3B-F0C3-A90A0ACB628C" value="true"/>
+</engineerTo>
+<useDomainConstraints>false</useDomainConstraints>
+<use>1</use>
+<logicalDatatype>LOGDT024</logicalDatatype>
+<dataTypeSize>30 CHAR</dataTypeSize>
+<ownDataTypeParameters>30 CHAR,,</ownDataTypeParameters>
+</Attribute>
+<Attribute name="cantidad_estimada_pasajeros" id="519745D3-FEF6-FE31-30EB-7DEA87C9794A">
+<createdBy>checharodck</createdBy>
+<createdTime>2026-08-31 06:01:43 UTC</createdTime>
+<ownerDesignName>Modelo_Metro_NY</ownerDesignName>
+<engineerTo>
+<item key="2FF66B82-1F50-7F3B-F0C3-A90A0ACB628C" value="true"/>
+</engineerTo>
+<useDomainConstraints>false</useDomainConstraints>
+<use>1</use>
+<logicalDatatype>LOGDT019</logicalDatatype>
+<dataTypePrecision>6</dataTypePrecision>
+<ownDataTypeParameters>,6,</ownDataTypeParameters>
+</Attribute>
+<Attribute name="id_ruta" id="5AB23AE0-C62F-1DAD-5575-2BAE02ACD516">
+<createdBy>checharodck</createdBy>
+<createdTime>2026-08-31 06:03:40 UTC</createdTime>
+<generatorID>43E21D24-54ED-F8B4-9564-043DE548B7A0</generatorID>
+<ownerDesignName>Modelo_Metro_NY</ownerDesignName>
+<engineerTo>
+<item key="2FF66B82-1F50-7F3B-F0C3-A90A0ACB628C" value="true"/>
+</engineerTo>
+<referedAttribute>D6E3EA8F-ACCF-39F5-171B-200027C32EE8</referedAttribute>
+<useDomainConstraints>false</useDomainConstraints>
+<use>1</use>
+<logicalDatatype>LOGDT019</logicalDatatype>
+<dataTypePrecision>10</dataTypePrecision>
+<ownDataTypeParameters>,,</ownDataTypeParameters>
+</Attribute>
+<Attribute name="codigo_interno" id="24275BC8-3F08-5673-6D4C-018AF0626068">
+<createdBy>checharodck</createdBy>
+<createdTime>2026-08-31 06:04:40 UTC</createdTime>
+<generatorID>1B92E927-2103-8C6E-27D5-5C030698AE9D</generatorID>
+<ownerDesignName>Modelo_Metro_NY</ownerDesignName>
+<engineerTo>
+<item key="2FF66B82-1F50-7F3B-F0C3-A90A0ACB628C" value="true"/>
+</engineerTo>
+<referedAttribute>24DFA24A-EF10-1EE9-3921-724E51CBC3AF</referedAttribute>
+<useDomainConstraints>false</useDomainConstraints>
+<use>1</use>
+<logicalDatatype>LOGDT024</logicalDatatype>
+<dataTypeSize>20 CHAR</dataTypeSize>
+<ownDataTypeParameters>,,</ownDataTypeParameters>
+</Attribute>
+<Attribute name="id_empleado" id="38AE6DE7-320F-03A0-539E-BB310574DFF6">
+<createdBy>checharodck</createdBy>
+<createdTime>2026-08-31 06:07:55 UTC</createdTime>
+<generatorID>D2646789-25C2-C903-0E61-B88FBC6139C3</generatorID>
+<ownerDesignName>Modelo_Metro_NY</ownerDesignName>
+<engineerTo>
+<item key="2FF66B82-1F50-7F3B-F0C3-A90A0ACB628C" value="true"/>
+</engineerTo>
+<referedAttribute>F945F59E-71CC-B68B-AE4B-AD6D91F372EC</referedAttribute>
+<useDomainConstraints>false</useDomainConstraints>
+<use>1</use>
+<logicalDatatype>LOGDT019</logicalDatatype>
+<dataTypePrecision>10</dataTypePrecision>
+<ownDataTypeParameters>,,</ownDataTypeParameters>
+</Attribute>
+</attributes>
+<identifiers itemClass="oracle.dbtools.crest.model.design.logical.CandidateKey">
+<identifier id="FEC9590A-2DEB-792A-501F-B3412514D922" name="VIAJE_PROGRAMADO PK">
+<createdBy>checharodck</createdBy>
+<createdTime>2026-08-31 05:59:01 UTC</createdTime>
+<ownerDesignName>Modelo_Metro_NY</ownerDesignName>
+<engineerTo>
+<item key="2FF66B82-1F50-7F3B-F0C3-A90A0ACB628C" value="true"/>
+</engineerTo>
+<pk>true</pk>
+<usedAttributes>
+<attributeRef>2122A6F9-E348-5C56-D135-79402B7CA90F</attributeRef>
+</usedAttributes>
+</identifier>
+</identifiers>
+</Entity>

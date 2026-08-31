@@ -1,0 +1,19 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<Relation class="oracle.dbtools.crest.model.design.logical.Relation" name="Relation_7" directorySegmentName="seg_0" id="81FACACE-D9B5-D6CE-7258-06FD649AD0F0">
+<createdBy>checharodck</createdBy>
+<createdTime>2026-08-31 05:35:00 UTC</createdTime>
+<ownerDesignName>Modelo_Metro_NY</ownerDesignName>
+<engineerTo>
+<item key="2FF66B82-1F50-7F3B-F0C3-A90A0ACB628C" value="true"/>
+</engineerTo>
+<sourcePk>E1CDF44B-44C1-CC17-B551-69E98DC25494</sourcePk>
+<identifying>false</identifying>
+<optionalSource>true</optionalSource>
+<optionalTarget>false</optionalTarget>
+<sourceCardinality>1</sourceCardinality>
+<sourceEntity>8D2B5DEC-33B5-DDA0-5B8D-13394400E0DC</sourceEntity>
+<targetCardinalityString>*</targetCardinalityString>
+<targetEntity>9655530F-A163-FFD5-BF0F-1EF55A535903</targetEntity>
+<transferable>true</transferable>
+<deleteRule>NO ACTION</deleteRule>
+</Relation>

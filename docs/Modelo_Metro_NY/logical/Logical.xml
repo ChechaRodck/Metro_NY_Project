@@ -1,0 +1,7 @@
+<?xml version = '1.0' encoding = 'UTF-8'?>
+<LogicalDesign class="oracle.dbtools.crest.model.design.logical.LogicalDesign" name="Logical" id="8A90A335-4EB3-051A-67E5-C70DF4E592FB" mainViewID="3D86FE5F-ED59-5F37-BA06-87FAE5B8E401">
+<createdBy>checharodck</createdBy>
+<createdTime>2026-08-31 02:18:53 UTC</createdTime>
+<ownerDesignName>Modelo_Metro_NY</ownerDesignName>
+<shouldBeOpen>false</shouldBeOpen>
+</LogicalDesign>
