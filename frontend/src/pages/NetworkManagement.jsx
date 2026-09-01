@@ -4,14 +4,13 @@ import {
   ArrowRight,
   Building2,
   CirclePlus,
-  Info,
   MapPinned,
   MoreHorizontal,
   Route,
   Search,
   TrainFront,
-  X,
 } from "lucide-react";
+import NetworkFormModal from "../components/NetworkFormModal";
 import {
   metroLines,
   metroRoutes,
@@ -20,21 +19,9 @@ import {
 import "../styles/network.css";
 
 const tabs = [
-  {
-    id: "lines",
-    label: "Líneas",
-    count: metroLines.length,
-  },
-  {
-    id: "stations",
-    label: "Estaciones",
-    count: metroStations.length,
-  },
-  {
-    id: "routes",
-    label: "Rutas",
-    count: metroRoutes.length,
-  },
+  { id: "lines", label: "Líneas" },
+  { id: "stations", label: "Estaciones" },
+  { id: "routes", label: "Rutas" },
 ];
 
 const statusOptions = {
@@ -68,8 +55,10 @@ function getStatusClass(status) {
   return "network-status network-status--danger";
 }
 
-function getLineColor(lineId) {
-  return metroLines.find((line) => line.id === lineId)?.color ?? "#475467";
+function getLineColor(lineId, availableLines) {
+  return (
+    availableLines.find((line) => line.id === lineId)?.color ?? "#475467"
+  );
 }
 
 function LinesTable({ records }) {
@@ -143,7 +132,7 @@ function LinesTable({ records }) {
   );
 }
 
-function StationsTable({ records }) {
+function StationsTable({ records, availableLines }) {
   return (
     <table className="network-table">
       <thead>
@@ -182,7 +171,12 @@ function StationsTable({ records }) {
                 {station.lines.map((line) => (
                   <span
                     key={line}
-                    style={{ "--network-line-color": getLineColor(line) }}
+                    style={{
+                      "--network-line-color": getLineColor(
+                        line,
+                        availableLines,
+                      ),
+                    }}
                   >
                     {line}
                   </span>
@@ -228,7 +222,7 @@ function StationsTable({ records }) {
   );
 }
 
-function RoutesTable({ records }) {
+function RoutesTable({ records, availableLines }) {
   return (
     <table className="network-table">
       <thead>
@@ -252,7 +246,10 @@ function RoutesTable({ records }) {
                 <span
                   className="network-line-code"
                   style={{
-                    "--network-line-color": getLineColor(routeItem.line),
+                    "--network-line-color": getLineColor(
+                      routeItem.line,
+                      availableLines,
+                    ),
                   }}
                 >
                   {routeItem.line}
@@ -308,16 +305,16 @@ function NetworkManagement() {
   const [activeTab, setActiveTab] = useState("lines");
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("Todos");
-  const [showNotice, setShowNotice] = useState(false);
+  const [isFormOpen, setIsFormOpen] = useState(false);
+
+  const [networkRecords, setNetworkRecords] = useState({
+    lines: metroLines,
+    stations: metroStations,
+    routes: metroRoutes,
+  });
 
   const filteredRecords = useMemo(() => {
-    const source = {
-      lines: metroLines,
-      stations: metroStations,
-      routes: metroRoutes,
-    }[activeTab];
-
-    return source.filter((record) => {
+    return networkRecords[activeTab].filter((record) => {
       const matchesSearch = normalizeText(
         Object.values(record).flat().join(" "),
       ).includes(normalizeText(searchTerm));
@@ -327,12 +324,22 @@ function NetworkManagement() {
 
       return matchesSearch && matchesStatus;
     });
-  }, [activeTab, searchTerm, statusFilter]);
+  }, [activeTab, networkRecords, searchTerm, statusFilter]);
 
   function handleTabChange(tabId) {
     setActiveTab(tabId);
     setSearchTerm("");
     setStatusFilter("Todos");
+    setIsFormOpen(false);
+  }
+
+  function handleCreate(newRecord) {
+    setNetworkRecords((currentRecords) => ({
+      ...currentRecords,
+      [activeTab]: [...currentRecords[activeTab], newRecord],
+    }));
+
+    setIsFormOpen(false);
   }
 
   return (
@@ -353,69 +360,53 @@ function NetworkManagement() {
         <button
           type="button"
           className="network-primary-button"
-          onClick={() => setShowNotice(true)}
+          onClick={() => setIsFormOpen(true)}
         >
           <CirclePlus size={18} />
           {actionLabels[activeTab]}
         </button>
       </section>
 
-      {showNotice && (
-        <div className="network-notice">
-          <Info size={18} />
-
-          <div>
-            <strong>Formulario pendiente de conexión</strong>
-            <span>
-              En el siguiente paso agregaremos el formulario para crear y
-              modificar registros.
-            </span>
-          </div>
-
-          <button
-            type="button"
-            aria-label="Cerrar aviso"
-            onClick={() => setShowNotice(false)}
-          >
-            <X size={18} />
-          </button>
-        </div>
-      )}
-
       <section className="network-summary">
         <article>
           <TrainFront size={20} />
+
           <div>
-            <strong>{metroLines.length}</strong>
+            <strong>{networkRecords.lines.length}</strong>
             <span>Líneas registradas</span>
           </div>
         </article>
 
         <article>
           <Building2 size={20} />
+
           <div>
-            <strong>{metroStations.length}</strong>
+            <strong>{networkRecords.stations.length}</strong>
             <span>Estaciones registradas</span>
           </div>
         </article>
 
         <article>
           <Route size={20} />
+
           <div>
-            <strong>{metroRoutes.length}</strong>
+            <strong>{networkRecords.routes.length}</strong>
             <span>Rutas configuradas</span>
           </div>
         </article>
 
         <article>
           <MapPinned size={20} />
+
           <div>
             <strong>
               {
-                metroStations.filter((station) => station.accessible)
-                  .length
+                networkRecords.stations.filter(
+                  (station) => station.accessible,
+                ).length
               }
             </strong>
+
             <span>Estaciones accesibles</span>
           </div>
         </article>
@@ -428,12 +419,14 @@ function NetworkManagement() {
               type="button"
               key={tab.id}
               className={
-                activeTab === tab.id ? "network-tab network-tab--active" : "network-tab"
+                activeTab === tab.id
+                  ? "network-tab network-tab--active"
+                  : "network-tab"
               }
               onClick={() => handleTabChange(tab.id)}
             >
               {tab.label}
-              <span>{tab.count}</span>
+              <span>{networkRecords[tab.id].length}</span>
             </button>
           ))}
         </div>
@@ -445,7 +438,13 @@ function NetworkManagement() {
             <input
               type="search"
               value={searchTerm}
-              placeholder={`Buscar en ${activeTab === "lines" ? "líneas" : activeTab === "stations" ? "estaciones" : "rutas"}...`}
+              placeholder={`Buscar en ${
+                activeTab === "lines"
+                  ? "líneas"
+                  : activeTab === "stations"
+                    ? "estaciones"
+                    : "rutas"
+              }...`}
               aria-label="Buscar registros"
               onChange={(event) => setSearchTerm(event.target.value)}
             />
@@ -477,11 +476,17 @@ function NetworkManagement() {
           )}
 
           {activeTab === "stations" && (
-            <StationsTable records={filteredRecords} />
+            <StationsTable
+              records={filteredRecords}
+              availableLines={networkRecords.lines}
+            />
           )}
 
           {activeTab === "routes" && (
-            <RoutesTable records={filteredRecords} />
+            <RoutesTable
+              records={filteredRecords}
+              availableLines={networkRecords.lines}
+            />
           )}
         </div>
 
@@ -493,6 +498,15 @@ function NetworkManagement() {
           </div>
         )}
       </section>
+
+      {isFormOpen && (
+        <NetworkFormModal
+          type={activeTab}
+          availableLines={networkRecords.lines}
+          onClose={() => setIsFormOpen(false)}
+          onSubmit={handleCreate}
+        />
+      )}
     </div>
   );
 }
