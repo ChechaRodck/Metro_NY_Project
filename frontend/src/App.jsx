@@ -7,6 +7,7 @@ import OperationsManagement from "./pages/OperationsManagement";
 import FleetManagement from "./pages/FleetManagement";
 import PersonnelManagement from "./pages/PersonnelManagement";
 import PassengerManagement from "./pages/PassengerManagement";
+import MaintenanceManagement from "./pages/MaintenanceManagement";
 
 function ModulePlaceholder({ title, description }) {
   return (
@@ -68,6 +69,7 @@ function App() {
   return (
     <Routes>
       <Route element={<DashboardLayout />}>
+      
         <Route index element={<Dashboard />} />
 
         <Route path="red" element={<NetworkManagement />} />
@@ -82,12 +84,7 @@ function App() {
        
         <Route
           path="mantenimiento"
-          element={
-            <ModulePlaceholder
-              title="Mantenimiento"
-              description="Aquí se controlarán los equipos, órdenes de mantenimiento, técnicos y repuestos."
-            />
-          }
+           element={<MaintenanceManagement />}
         />
 
         <Route
