@@ -3,15 +3,13 @@ import {
   CalendarDays,
   CirclePlus,
   Clock3,
-  Info,
   MoreHorizontal,
-  Route,
   Search,
   TrainFront,
   TriangleAlert,
   UsersRound,
-  X,
 } from "lucide-react";
+import OperationsFormModal from "../components/OperationsFormModal";
 import {
   operationSchedules,
   scheduledTrips,
@@ -19,14 +17,8 @@ import {
 import "../styles/operations.css";
 
 const tabs = [
-  {
-    id: "trips",
-    label: "Viajes programados",
-  },
-  {
-    id: "schedules",
-    label: "Horarios",
-  },
+  { id: "trips", label: "Viajes programados" },
+  { id: "schedules", label: "Horarios" },
 ];
 
 const statusOptions = {
@@ -131,6 +123,7 @@ function TripsTable({ records }) {
             <td>
               <div className="operation-time">
                 <Clock3 size={14} />
+
                 <div>
                   <strong>{trip.scheduledDeparture}</strong>
                   <span>
@@ -143,6 +136,7 @@ function TripsTable({ records }) {
             <td>
               <div className="operation-time">
                 <Clock3 size={14} />
+
                 <div>
                   <strong>{trip.scheduledArrival}</strong>
                   <span>
@@ -244,7 +238,9 @@ function SchedulesTable({ records }) {
             </td>
 
             <td>
-              <span className="service-badge">{schedule.service}</span>
+              <span className="service-badge">
+                {schedule.service}
+              </span>
             </td>
 
             <td>
@@ -280,43 +276,59 @@ function OperationsManagement() {
   const [activeTab, setActiveTab] = useState("trips");
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("Todos");
-  const [showNotice, setShowNotice] = useState(false);
+  const [isFormOpen, setIsFormOpen] = useState(false);
 
-  const totalPassengers = scheduledTrips.reduce(
+  const [operationRecords, setOperationRecords] = useState({
+    trips: scheduledTrips,
+    schedules: operationSchedules,
+  });
+
+  const totalPassengers = operationRecords.trips.reduce(
     (total, trip) => total + trip.passengers,
     0,
   );
 
-  const activeTrips = scheduledTrips.filter(
+  const activeTrips = operationRecords.trips.filter(
     (trip) =>
-      trip.status === "En curso" || trip.status === "En abordaje",
+      trip.status === "En curso" ||
+      trip.status === "En abordaje",
   ).length;
 
-  const delayedTrips = scheduledTrips.filter(
+  const delayedTrips = operationRecords.trips.filter(
     (trip) => trip.status === "Retrasado",
   ).length;
 
   const filteredRecords = useMemo(() => {
-    const source =
-      activeTab === "trips" ? scheduledTrips : operationSchedules;
-
-    return source.filter((record) => {
+    return operationRecords[activeTab].filter((record) => {
       const matchesSearch = normalizeText(
         Object.values(record).flat().join(" "),
       ).includes(normalizeText(searchTerm));
 
       const matchesStatus =
-        statusFilter === "Todos" || record.status === statusFilter;
+        statusFilter === "Todos" ||
+        record.status === statusFilter;
 
       return matchesSearch && matchesStatus;
     });
-  }, [activeTab, searchTerm, statusFilter]);
+  }, [activeTab, operationRecords, searchTerm, statusFilter]);
 
   function handleTabChange(tabId) {
     setActiveTab(tabId);
     setSearchTerm("");
     setStatusFilter("Todos");
-    setShowNotice(false);
+    setIsFormOpen(false);
+  }
+
+  function handleCreate(newRecord) {
+    setOperationRecords((currentRecords) => ({
+      ...currentRecords,
+      [activeTab]: [
+        ...currentRecords[activeTab],
+        newRecord,
+      ],
+    }));
+
+    setIsFormOpen(false);
   }
 
   return (
@@ -337,41 +349,19 @@ function OperationsManagement() {
         <button
           type="button"
           className="operations-primary-button"
-          onClick={() => setShowNotice(true)}
+          onClick={() => setIsFormOpen(true)}
         >
           <CirclePlus size={18} />
           {actionLabels[activeTab]}
         </button>
       </section>
 
-      {showNotice && (
-        <div className="operations-notice">
-          <Info size={18} />
-
-          <div>
-            <strong>Formulario en preparación</strong>
-            <span>
-              En el siguiente paso habilitaremos el formulario para crear
-              este registro.
-            </span>
-          </div>
-
-          <button
-            type="button"
-            aria-label="Cerrar aviso"
-            onClick={() => setShowNotice(false)}
-          >
-            <X size={18} />
-          </button>
-        </div>
-      )}
-
       <section className="operations-summary">
         <article>
           <CalendarDays size={20} />
 
           <div>
-            <strong>{scheduledTrips.length}</strong>
+            <strong>{operationRecords.trips.length}</strong>
             <span>Viajes programados</span>
           </div>
         </article>
@@ -398,7 +388,10 @@ function OperationsManagement() {
           <UsersRound size={20} />
 
           <div>
-            <strong>{totalPassengers.toLocaleString("es-GT")}</strong>
+            <strong>
+              {totalPassengers.toLocaleString("es-GT")}
+            </strong>
+
             <span>Pasajeros estimados</span>
           </div>
         </article>
@@ -418,12 +411,7 @@ function OperationsManagement() {
               onClick={() => handleTabChange(tab.id)}
             >
               {tab.label}
-
-              <span>
-                {tab.id === "trips"
-                  ? scheduledTrips.length
-                  : operationSchedules.length}
-              </span>
+              <span>{operationRecords[tab.id].length}</span>
             </button>
           ))}
         </div>
@@ -441,7 +429,9 @@ function OperationsManagement() {
                   : "Buscar horario o ruta..."
               }
               aria-label="Buscar registros"
-              onChange={(event) => setSearchTerm(event.target.value)}
+              onChange={(event) =>
+                setSearchTerm(event.target.value)
+              }
             />
           </label>
 
@@ -450,7 +440,9 @@ function OperationsManagement() {
 
             <select
               value={statusFilter}
-              onChange={(event) => setStatusFilter(event.target.value)}
+              onChange={(event) =>
+                setStatusFilter(event.target.value)
+              }
             >
               {statusOptions[activeTab].map((option) => (
                 <option value={option} key={option}>
@@ -479,12 +471,21 @@ function OperationsManagement() {
           <div className="operations-empty">
             <Search size={25} />
             <strong>No encontramos resultados</strong>
+
             <span>
               Prueba con otro texto o cambia el filtro seleccionado.
             </span>
           </div>
         )}
       </section>
+
+      {isFormOpen && (
+        <OperationsFormModal
+          type={activeTab}
+          onClose={() => setIsFormOpen(false)}
+          onSubmit={handleCreate}
+        />
+      )}
     </div>
   );
 }
