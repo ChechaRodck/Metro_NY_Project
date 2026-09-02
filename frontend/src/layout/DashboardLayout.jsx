@@ -223,49 +223,35 @@ function DashboardLayout() {
       )}
 
 
-  <button
-    type="button"
-    aria-label={sidebarCollapsed ? "Mostrar menú lateral" : "Ocultar menú lateral"}
-   title={sidebarCollapsed ? "Mostrar menú lateral" : "Ocultar menú lateral"}
-   onClick={() => setSidebarCollapsed((valorActual) => !valorActual)}
-    style={{
-    position: "fixed",
-    top: "104px",
-    left: sidebarCollapsed ? "0px" : "249px",
-    zIndex: 9999,
-    display: "grid",
-    width: "42px",
-    height: "42px",
-    padding: 0,
-    placeItems: "center",
-    color: "#2563eb",
-    fontSize: "25px",
-    fontWeight: 700,
-    background: "#ffffff",
-    border: "1px solid #d0d5dd",
-    borderRadius: sidebarCollapsed
-      ? "0 12px 12px 0"
-     : "12px",
-    boxShadow: "0 5px 16px rgba(16, 24, 40, 0.18)",
-    cursor: "pointer",
-    transition: "left 220ms ease, background-color 160ms ease",
-  }}
-  >
-    {sidebarCollapsed ? "»" : "«"}
-  </button>
-
      <aside
       className={`sidebar ${sidebarOpen ? "sidebar--open" : ""}`}
       style={{
-        display: sidebarCollapsed ? "none" : undefined,
-      }}
+  width: sidebarCollapsed ? "0px" : "270px",
+  minWidth: sidebarCollapsed ? "0px" : "270px",
+  opacity: sidebarCollapsed ? 0 : 1,
+  transform: sidebarCollapsed
+    ? "translateX(-18px)"
+    : "translateX(0)",
+  overflowX: "hidden",
+  whiteSpace: "nowrap",
+  pointerEvents: sidebarCollapsed ? "none" : "auto",
+  borderRightColor: sidebarCollapsed
+    ? "transparent"
+    : "#243044",
+  transition: `
+    width 550ms cubic-bezier(0.4, 0, 0.2, 1),
+    min-width 550ms cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 350ms ease,
+    transform 550ms cubic-bezier(0.4, 0, 0.2, 1)
+  `,
+}}
     >
         <div className="sidebar__header">
           <div className="brand">
             <div className="brand__icon">M</div>
 
             <div>
-              <p className="brand__name">Metro NY</p>
+              <p className="brand__name">NEW YORK METRO</p>
               <span className="brand__subtitle">Control Center</span>
             </div>
           </div>
@@ -318,6 +304,31 @@ function DashboardLayout() {
       <div className="main-area">
         <header className="topbar">
           <div className="topbar__left">
+            <button
+  type="button"
+  aria-label={sidebarCollapsed ? "Mostrar menú lateral" : "Ocultar menú lateral"}
+  title={sidebarCollapsed ? "Mostrar menú lateral" : "Ocultar menú lateral"}
+  onClick={() => setSidebarCollapsed((valorActual) => !valorActual)}
+  style={{
+    display: "grid",
+    flexShrink: 0,
+    width: "42px",
+    height: "42px",
+    padding: 0,
+    placeItems: "center",
+    color: "#2563eb",
+    fontSize: "25px",
+    fontWeight: 700,
+    background: "#ffffff",
+    border: "1px solid #d0d5dd",
+    borderRadius: "10px",
+    boxShadow: "0 3px 10px rgba(16, 24, 40, 0.10)",
+    cursor: "pointer",
+    transition: "color 200ms ease, background-color 200ms ease",
+  }}
+>
+  {sidebarCollapsed ? "»" : "«"}
+</button>
             <button
               type="button"
               className="menu-button"
