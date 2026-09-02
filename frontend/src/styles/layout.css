@@ -261,6 +261,192 @@
   border-radius: 50%;
 }
 
+.search-area,
+.notification-area {
+  position: relative;
+}
+
+.search-results,
+.notification-panel {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  z-index: 80;
+  overflow: hidden;
+  background: #ffffff;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  box-shadow: 0 18px 45px rgb(15 23 42 / 16%);
+}
+
+.search-results {
+  width: 100%;
+  min-width: 260px;
+  padding: 8px;
+}
+
+.search-results__label {
+  display: block;
+  padding: 7px 10px;
+  color: #98a2b3;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.search-results button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 11px 10px;
+  color: #344054;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+}
+
+.search-results button:hover,
+.search-results button:focus-visible {
+  color: var(--color-primary);
+  background: #eff6ff;
+  outline: 0;
+}
+
+.search-results button span {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.search-results p {
+  margin: 0;
+  padding: 16px 10px;
+  color: #667085;
+  font-size: 12px;
+  text-align: center;
+}
+
+.notification-panel {
+  width: min(360px, calc(100vw - 32px));
+}
+
+.notification-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px;
+  border-bottom: 1px solid #eaecf0;
+}
+
+.notification-panel__header strong,
+.notification-panel__header span {
+  display: block;
+}
+
+.notification-panel__header strong {
+  color: #172033;
+  font-size: 14px;
+}
+
+.notification-panel__header span {
+  margin-top: 3px;
+  color: #98a2b3;
+  font-size: 10px;
+}
+
+.notification-panel__header button {
+  padding: 6px 8px;
+  color: var(--color-primary);
+  font-size: 10px;
+  font-weight: 700;
+  background: transparent;
+  border: 0;
+  border-radius: 7px;
+}
+
+.notification-panel__header button:hover {
+  background: #eff6ff;
+}
+
+.notification-list {
+  max-height: 360px;
+  overflow-y: auto;
+}
+
+.notification-item {
+  display: grid;
+  grid-template-columns: 9px minmax(0, 1fr);
+  gap: 11px;
+  width: 100%;
+  padding: 14px 16px;
+  text-align: left;
+  background: #ffffff;
+  border: 0;
+  border-bottom: 1px solid #f0f2f5;
+}
+
+.notification-item:last-child {
+  border-bottom: 0;
+}
+
+.notification-item:hover,
+.notification-item:focus-visible,
+.notification-item--unread {
+  background: #f8faff;
+}
+
+.notification-item:focus-visible {
+  outline: 2px solid #84adff;
+  outline-offset: -2px;
+}
+
+.notification-item__indicator {
+  width: 9px;
+  height: 9px;
+  margin-top: 4px;
+  background: #98a2b3;
+  border-radius: 50%;
+}
+
+.notification-item__indicator--warning {
+  background: #f79009;
+}
+
+.notification-item__indicator--blue {
+  background: #2563eb;
+}
+
+.notification-item__indicator--green {
+  background: #12b76a;
+}
+
+.notification-item__content,
+.notification-item__content > span,
+.notification-item__content small {
+  display: block;
+}
+
+.notification-item__content strong {
+  color: #344054;
+  font-size: 12px;
+}
+
+.notification-item__content > span {
+  margin-top: 4px;
+  color: #667085;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.notification-item__content small {
+  margin-top: 6px;
+  color: #98a2b3;
+  font-size: 9px;
+}
+
 .search-box {
   display: flex;
   align-items: center;
@@ -399,4 +585,50 @@
   .page-content {
     padding: 20px 16px 32px;
   }
+}
+
+/* Scroll moderno del menú lateral */
+.sidebar {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(148 163 184 / 45%) transparent;
+}
+
+.sidebar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sidebar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sidebar::-webkit-scrollbar-thumb {
+  background: rgb(148 163 184 / 40%);
+  border-radius: 999px;
+}
+
+.sidebar::-webkit-scrollbar-thumb:hover {
+  background: rgb(148 163 184 / 70%);
+}
+
+/* Scroll moderno de la página */
+html {
+  scrollbar-width: thin;
+  scrollbar-color: #98a2b3 #f1f5f9;
+}
+
+html::-webkit-scrollbar {
+  width: 7px;
+}
+
+html::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+html::-webkit-scrollbar-thumb {
+  background: #98a2b3;
+  border-radius: 999px;
+}
+
+html::-webkit-scrollbar-thumb:hover {
+  background: #667085;
 }

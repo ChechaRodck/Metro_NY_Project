@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router";
 import {
   ArrowUpRight,
   CalendarClock,
@@ -55,6 +56,8 @@ function getSeverityClass(severity) {
 
 function Dashboard() {
   const [lastUpdate, setLastUpdate] = useState(new Date());
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const navigate = useNavigate();
 
   const currentDate = new Intl.DateTimeFormat("es-GT", {
     weekday: "long",
@@ -64,7 +67,16 @@ function Dashboard() {
   }).format(new Date());
 
   function handleRefresh() {
-    setLastUpdate(new Date());
+    if (isRefreshing) {
+      return;
+    }
+
+    setIsRefreshing(true);
+
+    window.setTimeout(() => {
+      setLastUpdate(new Date());
+      setIsRefreshing(false);
+    }, 700);
   }
 
   return (
@@ -96,9 +108,13 @@ function Dashboard() {
             type="button"
             className="refresh-button"
             onClick={handleRefresh}
+            disabled={isRefreshing}
           >
-            <RefreshCw size={17} />
-            Actualizar datos
+            <RefreshCw
+              size={17}
+              className={isRefreshing ? "refresh-button__icon--spin" : ""}
+            />
+            {isRefreshing ? "Actualizando..." : "Actualizar datos"}
           </button>
         </div>
       </section>
@@ -147,7 +163,11 @@ function Dashboard() {
               <h3>Flujo de pasajeros</h3>
             </div>
 
-            <button type="button" className="text-button">
+            <button
+              type="button"
+              className="text-button"
+              onClick={() => navigate("/reportes")}
+            >
               Ver reporte
               <ArrowUpRight size={16} />
             </button>
@@ -266,7 +286,11 @@ function Dashboard() {
               <h3>Viajes programados</h3>
             </div>
 
-            <button type="button" className="text-button">
+            <button
+              type="button"
+              className="text-button"
+              onClick={() => navigate("/operaciones")}
+            >
               Ver todos
               <ArrowUpRight size={16} />
             </button>

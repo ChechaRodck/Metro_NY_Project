@@ -1,0 +1,302 @@
+
+.maintenance-heading,
+.incident-heading,
+.reports-heading {
+  margin-bottom: 22px;
+}
+
+.maintenance-heading__eyebrow,
+.incident-heading__eyebrow,
+.reports-heading__eyebrow {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+}
+
+.maintenance-heading h2,
+.incident-heading h2,
+.reports-heading h2 {
+  font-size: 27px;
+  line-height: normal;
+  letter-spacing: -0.03em;
+}
+
+.maintenance-heading p,
+.incident-heading p,
+.reports-heading p {
+  font-size: 14px;
+}
+
+
+.maintenance-primary-button,
+.incident-primary-button,
+.reports-primary-button {
+  min-height: 42px;
+  padding: 0 15px;
+  border-radius: 9px;
+  box-shadow: 0 6px 16px rgb(37 99 235 / 20%);
+  font-size: 12px;
+  transform: none;
+}
+
+.maintenance-primary-button:hover,
+.incident-primary-button:hover,
+.reports-primary-button:hover {
+  box-shadow: 0 6px 16px rgb(37 99 235 / 20%);
+  transform: none;
+}
+
+.maintenance-primary-button svg,
+.incident-primary-button svg,
+.reports-primary-button svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* Selector de periodo de Reportes */
+.reports-period-select {
+  min-height: 42px;
+  padding: 0 11px;
+  border-radius: 9px;
+}
+
+.reports-period-select select {
+  font-size: 11px;
+}
+
+.reports-period-select svg {
+  width: 17px;
+  height: 17px;
+}
+
+
+.maintenance-summary article span,
+.incident-summary article span,
+.reports-summary article div > span {
+  font-size: 10px !important;
+}
+
+.reports-summary article div > span {
+  margin-bottom: 4px;
+}
+
+.reports-summary article small {
+  font-size: 9px;
+}
+
+
+.maintenance-notice,
+.incident-notice,
+.reports-notice {
+  padding: 11px 14px;
+  font-size: 11px;
+}
+
+
+.maintenance-panel,
+.incident-panel,
+.reports-history,
+.reports-chart-card {
+  border-radius: 13px;
+  box-shadow: 0 3px 12px rgb(16 24 40 / 3%);
+}
+
+
+.maintenance-tabs,
+.incident-tabs {
+  align-items: stretch;
+  gap: 5px;
+  min-height: 0;
+  padding: 11px 17px 0;
+}
+
+.maintenance-tab,
+.incident-tab {
+  align-self: auto;
+  gap: 7px;
+  min-height: 45px;
+  padding: 0 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.maintenance-tab::after,
+.incident-tab::after {
+  right: 10px;
+  bottom: -1px;
+  left: 10px;
+  height: 2px;
+}
+
+.maintenance-tab span,
+.incident-tab span {
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  font-size: 9px;
+}
+
+
+.maintenance-toolbar,
+.incident-toolbar {
+  gap: 12px;
+  padding: 16px 18px;
+  background: #fcfcfd;
+}
+
+.maintenance-search,
+.incident-search {
+  width: min(390px, 100%);
+}
+
+.maintenance-search input,
+.incident-search input {
+  height: 40px;
+  padding: 0 12px 0 40px;
+  border-radius: 8px;
+  font-size: 12px;
+}
+
+.maintenance-search svg,
+.incident-search svg {
+  left: 13px;
+  width: 18px;
+  height: 18px;
+}
+
+.maintenance-filter,
+.incident-filter {
+  gap: 7px;
+  min-height: 40px;
+  padding: 0 10px;
+  border-radius: 8px;
+  font-size: 10px;
+}
+
+.maintenance-filter select,
+.incident-filter select {
+  font-size: 11px;
+}
+
+.maintenance-results,
+.incident-results {
+  font-size: 10px;
+}
+
+/* Tablas de los tres módulos */
+.maintenance-table th,
+.maintenance-table td,
+.incident-table th,
+.incident-table td,
+.reports-table th,
+.reports-table td {
+  padding: 13px 14px;
+}
+
+.maintenance-table th,
+.incident-table th,
+.reports-table th {
+  background: #ffffff;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.maintenance-table td,
+.incident-table td,
+.reports-table td {
+  color: #475467;
+  font-size: 11px;
+}
+
+.maintenance-table td strong,
+.incident-table td strong,
+.reports-table td strong {
+  font-size: 11px;
+}
+
+.maintenance-table td small,
+.incident-table td small,
+.reports-table td small,
+.maintenance-table td span:not(.maintenance-priority):not(.maintenance-status),
+.incident-table td span:not(.incident-severity):not(.incident-status),
+.reports-file span {
+  font-size: 9px;
+}
+
+/* Identidades e iconos guardados en las tablas */
+.incident-identity__icon {
+  width: 34px;
+  height: 34px;
+}
+
+.incident-identity__icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.equipment-identity > svg,
+.part-identity > svg,
+.reports-file > svg {
+  width: 16px;
+  height: 16px;
+  padding: 9px;
+}
+
+/* Etiquetas de estado y prioridad */
+.maintenance-priority,
+.maintenance-status,
+.incident-severity,
+.incident-status,
+.reports-status {
+  padding: 5px 8px;
+  font-size: 9px;
+}
+
+.maintenance-row-action,
+.incident-row-action,
+.reports-download-button {
+  width: 32px;
+  height: 32px;
+}
+
+.maintenance-row-action svg,
+.incident-row-action svg,
+.reports-download-button svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Reportes */
+.reports-chart-card {
+  padding: 20px;
+}
+
+.reports-chart-card__header h3,
+.reports-history__header h3 {
+  font-size: 15px;
+}
+
+.reports-history__header {
+  padding: 17px 20px;
+}
+
+.reports-file {
+  gap: 10px;
+  min-width: 220px;
+}
+
+/* Conserva la adaptación para teléfonos */
+@media (max-width: 720px) {
+  .maintenance-heading h2,
+  .incident-heading h2,
+  .reports-heading h2 {
+    font-size: 23px;
+  }
+
+  .maintenance-primary-button,
+  .incident-primary-button,
+  .reports-primary-button {
+    width: 100%;
+  }
+}
