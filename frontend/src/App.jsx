@@ -5,6 +5,7 @@ import Dashboard from "./pages/Dashboard";
 import NetworkManagement from "./pages/NetworkManagement";
 import OperationsManagement from "./pages/OperationsManagement";
 import FleetManagement from "./pages/FleetManagement";
+import PersonnelManagement from "./pages/PersonnelManagement";
 
 function ModulePlaceholder({ title, description }) {
   return (
@@ -74,15 +75,7 @@ function App() {
 
         <Route path="flota" element={<FleetManagement />} />
 
-        <Route
-          path="personal"
-          element={
-            <ModulePlaceholder
-              title="Gestión del personal"
-              description="Aquí se administrarán empleados, cargos, turnos y certificaciones."
-            />
-          }
-        />
+        <Route path="personal" element={<PersonnelManagement />} />
 
         <Route
           path="pasajeros"
