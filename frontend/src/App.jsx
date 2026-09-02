@@ -8,6 +8,7 @@ import FleetManagement from "./pages/FleetManagement";
 import PersonnelManagement from "./pages/PersonnelManagement";
 import PassengerManagement from "./pages/PassengerManagement";
 import MaintenanceManagement from "./pages/MaintenanceManagement";
+import IncidentManagement from "./pages/IncidentManagement";
 
 function ModulePlaceholder({ title, description }) {
   return (
@@ -89,12 +90,7 @@ function App() {
 
         <Route
           path="incidentes"
-          element={
-            <ModulePlaceholder
-              title="Incidentes operativos"
-              description="Aquí se registrarán incidentes, elementos afectados y acciones correctivas."
-            />
-          }
+          element={<IncidentManagement />}
         />
 
         <Route
