@@ -3,6 +3,7 @@ import { Construction } from "lucide-react";
 import DashboardLayout from "./layout/DashboardLayout";
 import Dashboard from "./pages/Dashboard";
 import NetworkManagement from "./pages/NetworkManagement";
+import OperationsManagement from "./pages/OperationsManagement";
 
 function ModulePlaceholder({ title, description }) {
   return (
@@ -68,15 +69,7 @@ function App() {
 
         <Route path="red" element={<NetworkManagement />} />
 
-        <Route
-          path="operaciones"
-          element={
-            <ModulePlaceholder
-              title="Operaciones"
-              description="Aquí se controlarán los horarios, frecuencias y viajes programados."
-            />
-          }
-        />
+        <Route path="operaciones" element={<OperationsManagement />} />
 
         <Route
           path="flota"
