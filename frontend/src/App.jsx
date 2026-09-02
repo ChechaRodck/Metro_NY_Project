@@ -6,6 +6,7 @@ import NetworkManagement from "./pages/NetworkManagement";
 import OperationsManagement from "./pages/OperationsManagement";
 import FleetManagement from "./pages/FleetManagement";
 import PersonnelManagement from "./pages/PersonnelManagement";
+import PassengerManagement from "./pages/PassengerManagement";
 
 function ModulePlaceholder({ title, description }) {
   return (
@@ -77,16 +78,8 @@ function App() {
 
         <Route path="personal" element={<PersonnelManagement />} />
 
-        <Route
-          path="pasajeros"
-          element={
-            <ModulePlaceholder
-              title="Pasajeros y tarjetas"
-              description="Aquí se gestionarán pasajeros, tarjetas, recargas, viajes y tarifas."
-            />
-          }
-        />
-
+       <Route path="pasajeros" element={<PassengerManagement />} />
+       
         <Route
           path="mantenimiento"
           element={
