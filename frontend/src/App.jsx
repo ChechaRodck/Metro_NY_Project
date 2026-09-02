@@ -4,6 +4,7 @@ import DashboardLayout from "./layout/DashboardLayout";
 import Dashboard from "./pages/Dashboard";
 import NetworkManagement from "./pages/NetworkManagement";
 import OperationsManagement from "./pages/OperationsManagement";
+import FleetManagement from "./pages/FleetManagement";
 
 function ModulePlaceholder({ title, description }) {
   return (
@@ -71,15 +72,7 @@ function App() {
 
         <Route path="operaciones" element={<OperationsManagement />} />
 
-        <Route
-          path="flota"
-          element={
-            <ModulePlaceholder
-              title="Trenes y vagones"
-              description="Aquí se administrará la flota, sus vagones, depósitos y estados operativos."
-            />
-          }
-        />
+        <Route path="flota" element={<FleetManagement />} />
 
         <Route
           path="personal"
