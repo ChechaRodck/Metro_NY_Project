@@ -9,6 +9,7 @@ import PersonnelManagement from "./pages/PersonnelManagement";
 import PassengerManagement from "./pages/PassengerManagement";
 import MaintenanceManagement from "./pages/MaintenanceManagement";
 import IncidentManagement from "./pages/IncidentManagement";
+import ReportsManagement from "./pages/ReportsManagement";
 
 function ModulePlaceholder({ title, description }) {
   return (
@@ -95,13 +96,9 @@ function App() {
 
         <Route
           path="reportes"
-          element={
-            <ModulePlaceholder
-              title="Reportes y estadísticas"
-              description="Aquí se presentarán indicadores operativos, financieros y de utilización del servicio."
-            />
-          }
+          element={<ReportsManagement />}
         />
+          
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />
