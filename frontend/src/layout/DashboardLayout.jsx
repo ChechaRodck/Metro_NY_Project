@@ -21,7 +21,7 @@ import {
   X,
 } from "lucide-react";
 import "../styles/layout.css";
-
+import UserMenu from "../components/UserMenu";
 const navigation = [
   {
     to: "/",
@@ -466,14 +466,7 @@ function DashboardLayout() {
               )}
             </div>
 
-            <div className="user-profile">
-              <div className="user-profile__avatar">OM</div>
-
-              <div className="user-profile__information">
-                <strong>Otto Muñoz</strong>
-                <span>Administrador</span>
-              </div>
-            </div>
+            <UserMenu />
           </div>
         </header>
 
