@@ -1,0 +1,378 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-04T02:50:06.4481926Z",
+  "title": "Design System: Metro NY",
+  "extensions": {
+    "colorMeta": {
+      "signal-blue": {
+        "role": "primary",
+        "displayName": "Signal Blue",
+        "canonical": "#2563eb",
+        "tonalRamp": ["#172554", "#1e3a8a", "#1e40af", "#1d4ed8", "#2563eb", "#60a5fa", "#bfdbfe", "#eff6ff"]
+      },
+      "deep-signal-blue": {
+        "role": "primary",
+        "displayName": "Deep Signal Blue",
+        "canonical": "#1d4ed8",
+        "tonalRamp": ["#172554", "#1e3a8a", "#1e40af", "#1d4ed8", "#2563eb", "#60a5fa", "#bfdbfe", "#eff6ff"]
+      },
+      "skyline-cyan": {
+        "role": "secondary",
+        "displayName": "Skyline Cyan",
+        "canonical": "#0ea5e9",
+        "tonalRamp": ["#082f49", "#0c4a6e", "#075985", "#0369a1", "#0284c7", "#0ea5e9", "#7dd3fc", "#f0f9ff"]
+      },
+      "dispatch-navy": {
+        "role": "neutral",
+        "displayName": "Dispatch Navy",
+        "canonical": "#101828",
+        "tonalRamp": ["#0b1220", "#101828", "#1d2939", "#344054", "#667085", "#98a2b3", "#d0d5dd", "#f4f7fb"]
+      },
+      "dispatch-hover-slate": {
+        "role": "neutral",
+        "displayName": "Dispatch Hover Slate",
+        "canonical": "#1d2939",
+        "tonalRamp": ["#0b1220", "#101828", "#1d2939", "#344054", "#667085", "#98a2b3", "#d0d5dd", "#f4f7fb"]
+      },
+      "console-mist": {
+        "role": "neutral",
+        "displayName": "Console Mist",
+        "canonical": "#f4f7fb",
+        "tonalRamp": ["#0b1220", "#101828", "#344054", "#667085", "#98a2b3", "#d0d5dd", "#e4e7ec", "#f4f7fb"]
+      },
+      "work-surface": {
+        "role": "neutral",
+        "displayName": "Work Surface",
+        "canonical": "#ffffff",
+        "tonalRamp": ["#0b1220", "#101828", "#344054", "#667085", "#98a2b3", "#d0d5dd", "#f4f7fb", "#ffffff"]
+      },
+      "control-ink": {
+        "role": "neutral",
+        "displayName": "Control Ink",
+        "canonical": "#172033",
+        "tonalRamp": ["#0b1220", "#101828", "#172033", "#344054", "#667085", "#98a2b3", "#d0d5dd", "#f4f7fb"]
+      },
+      "field-ink": {
+        "role": "neutral",
+        "displayName": "Field Ink",
+        "canonical": "#344054",
+        "tonalRamp": ["#0b1220", "#101828", "#1d2939", "#344054", "#667085", "#98a2b3", "#d0d5dd", "#f4f7fb"]
+      },
+      "muted-copy": {
+        "role": "neutral",
+        "displayName": "Muted Copy",
+        "canonical": "#667085",
+        "tonalRamp": ["#0b1220", "#101828", "#1d2939", "#344054", "#667085", "#98a2b3", "#d0d5dd", "#f4f7fb"]
+      },
+      "quiet-copy": {
+        "role": "neutral",
+        "displayName": "Quiet Copy",
+        "canonical": "#98a2b3",
+        "tonalRamp": ["#0b1220", "#101828", "#1d2939", "#344054", "#667085", "#98a2b3", "#d0d5dd", "#f4f7fb"]
+      },
+      "divider-fog": {
+        "role": "neutral",
+        "displayName": "Divider Fog",
+        "canonical": "#e4e7ec",
+        "tonalRamp": ["#0b1220", "#101828", "#344054", "#667085", "#98a2b3", "#d0d5dd", "#e4e7ec", "#ffffff"]
+      },
+      "info-ink": {
+        "role": "secondary",
+        "displayName": "Information Ink",
+        "canonical": "#175cd3",
+        "tonalRamp": ["#172554", "#1e3a8a", "#1e40af", "#175cd3", "#2563eb", "#60a5fa", "#bfdbfe", "#eff8ff"]
+      },
+      "info-surface": {
+        "role": "secondary",
+        "displayName": "Information Surface",
+        "canonical": "#eff8ff",
+        "tonalRamp": ["#172554", "#1e3a8a", "#1e40af", "#1d4ed8", "#2563eb", "#60a5fa", "#b2ddff", "#eff8ff"]
+      },
+      "clear-signal": {
+        "role": "tertiary",
+        "displayName": "Clear Signal",
+        "canonical": "#12b76a",
+        "tonalRamp": ["#054f31", "#05603a", "#027a48", "#039855", "#12b76a", "#32d583", "#a6f4c5", "#ecfdf3"]
+      },
+      "success-ink": {
+        "role": "tertiary",
+        "displayName": "Success Ink",
+        "canonical": "#027a48",
+        "tonalRamp": ["#054f31", "#05603a", "#027a48", "#039855", "#12b76a", "#32d583", "#a6f4c5", "#ecfdf3"]
+      },
+      "success-surface": {
+        "role": "tertiary",
+        "displayName": "Success Surface",
+        "canonical": "#ecfdf3",
+        "tonalRamp": ["#054f31", "#05603a", "#027a48", "#039855", "#12b76a", "#32d583", "#a6f4c5", "#ecfdf3"]
+      },
+      "caution-amber": {
+        "role": "tertiary",
+        "displayName": "Caution Amber",
+        "canonical": "#f79009",
+        "tonalRamp": ["#7a2e0e", "#93370d", "#b54708", "#dc6803", "#f79009", "#fdb022", "#fedf89", "#fffaeb"]
+      },
+      "warning-ink": {
+        "role": "tertiary",
+        "displayName": "Warning Ink",
+        "canonical": "#b54708",
+        "tonalRamp": ["#7a2e0e", "#93370d", "#b54708", "#dc6803", "#f79009", "#fdb022", "#fedf89", "#fffaeb"]
+      },
+      "warning-surface": {
+        "role": "tertiary",
+        "displayName": "Warning Surface",
+        "canonical": "#fffaeb",
+        "tonalRamp": ["#7a2e0e", "#93370d", "#b54708", "#dc6803", "#f79009", "#fdb022", "#fedf89", "#fffaeb"]
+      },
+      "incident-red": {
+        "role": "tertiary",
+        "displayName": "Incident Red",
+        "canonical": "#f04438",
+        "tonalRamp": ["#7a271a", "#912018", "#b42318", "#d92d20", "#f04438", "#f97066", "#fecdca", "#fef3f2"]
+      },
+      "danger-ink": {
+        "role": "tertiary",
+        "displayName": "Danger Ink",
+        "canonical": "#b42318",
+        "tonalRamp": ["#7a271a", "#912018", "#b42318", "#d92d20", "#f04438", "#f97066", "#fecdca", "#fef3f2"]
+      },
+      "danger-surface": {
+        "role": "tertiary",
+        "displayName": "Danger Surface",
+        "canonical": "#fef3f2",
+        "tonalRamp": ["#7a271a", "#912018", "#b42318", "#d92d20", "#f04438", "#f97066", "#fecdca", "#fef3f2"]
+      },
+      "entry-indigo": {
+        "role": "secondary",
+        "displayName": "Entry Indigo",
+        "canonical": "#0505a9",
+        "tonalRamp": ["#02023d", "#03036b", "#0505a9", "#1b1bd1", "#4f46e5", "#818cf8", "#c7d2fe", "#eef2ff"]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Entry Display",
+        "purpose": "Large statements on the split login and other exceptional entry surfaces."
+      },
+      "headline": {
+        "displayName": "Module Headline",
+        "purpose": "Administrative page titles and top-level operational headings."
+      },
+      "title": {
+        "displayName": "Panel Title",
+        "purpose": "Card, chart, report, and dialog headings."
+      },
+      "body": {
+        "displayName": "Interface Body",
+        "purpose": "Descriptions, field values, help text, and routine interface copy."
+      },
+      "navigation": {
+        "displayName": "Module Navigation",
+        "purpose": "Persistent sidebar destinations and other high-frequency navigation."
+      },
+      "label": {
+        "displayName": "Operational Label",
+        "purpose": "Eyebrows, table headers, compact actions, counts, and statuses."
+      },
+      "mono": {
+        "displayName": "Transcription Value",
+        "purpose": "Demo credentials and code-like values that must be copied exactly."
+      }
+    },
+    "shadows": [
+      {
+        "name": "card-ambient",
+        "value": "0 3px 12px rgb(16 24 40 / 3%)",
+        "purpose": "Low ambient separation for summary cards, dashboard cards, and management panels."
+      },
+      {
+        "name": "primary-action-lift",
+        "value": "0 6px 16px rgb(37 99 235 / 20%)",
+        "purpose": "Controlled emphasis for primary actions and selected navigation."
+      },
+      {
+        "name": "floating-panel",
+        "value": "0 18px 45px rgb(15 23 42 / 16%)",
+        "purpose": "Menus, search results, notifications, and other floating panels."
+      },
+      {
+        "name": "dialog-lift",
+        "value": "0 24px 60px rgb(15 23 42 / 28%)",
+        "purpose": "Dialogs and modal forms over a dimmed application plane."
+      },
+      {
+        "name": "focus-halo",
+        "value": "0 0 0 3px rgb(37 99 235 / 10%)",
+        "purpose": "Keyboard and text focus on fields and composite controls."
+      }
+    ],
+    "motion": [
+      {
+        "name": "state-standard",
+        "value": "160ms ease",
+        "purpose": "Default hover, color, and compact control transitions."
+      },
+      {
+        "name": "drawer-standard",
+        "value": "220ms ease",
+        "purpose": "Off-canvas sidebar entry and exit."
+      },
+      {
+        "name": "floating-enter",
+        "value": "160ms ease-out",
+        "purpose": "Short opacity and vertical entrance for menus."
+      },
+      {
+        "name": "entry-blob-rise",
+        "value": "450ms ease",
+        "purpose": "Signature liquid fill used only by exceptional entry actions."
+      }
+    ],
+    "breakpoints": [
+      { "name": "wide-grid", "value": "1200px" },
+      { "name": "compact-shell", "value": "1100px" },
+      { "name": "drawer-shell", "value": "900px" },
+      { "name": "login-stack", "value": "760px" },
+      { "name": "module-stack", "value": "720px" },
+      { "name": "compact-topbar", "value": "680px" },
+      { "name": "mobile-dialog", "value": "640px" },
+      { "name": "small-entry", "value": "460px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Action Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The decisive routine CTA for creating, saving, or refreshing operational records.",
+      "html": "<button class=\"ds-btn-primary\" type=\"button\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M12 5v14M5 12h14\"/></svg>Nueva línea</button>",
+      "css": ".ds-btn-primary { display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:42px; padding:0 15px; color:#fff; font:700 12px/1.2 Inter,system-ui,sans-serif; background:var(--color-primary,#2563eb); border:0; border-radius:9px; box-shadow:0 6px 16px rgb(37 99 235 / 20%); transition:background-color 160ms ease,box-shadow 160ms ease; cursor:pointer; } .ds-btn-primary svg { width:18px; height:18px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; } .ds-btn-primary:hover { background:var(--color-primary-dark,#1d4ed8); } .ds-btn-primary:focus-visible { outline:0; box-shadow:0 0 0 3px rgb(37 99 235 / 20%),0 6px 16px rgb(37 99 235 / 20%); }"
+    },
+    {
+      "name": "Text Action Button",
+      "kind": "button",
+      "refersTo": "button-text",
+      "description": "A quiet action for navigation and secondary operations inside panels.",
+      "html": "<button class=\"ds-btn-text\" type=\"button\">Ver reporte<svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M7 17 17 7M7 7h10v10\"/></svg></button>",
+      "css": ".ds-btn-text { display:inline-flex; align-items:center; gap:5px; padding:7px 9px; color:var(--color-primary,#2563eb); font:600 11px/1.2 Inter,system-ui,sans-serif; background:transparent; border:0; border-radius:7px; transition:background-color 160ms ease,color 160ms ease; cursor:pointer; } .ds-btn-text svg { width:16px; height:16px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; } .ds-btn-text:hover,.ds-btn-text:focus-visible { background:#eff6ff; outline:0; }"
+    },
+    {
+      "name": "Operational Search Field",
+      "kind": "input",
+      "refersTo": "field-standard",
+      "description": "A compact composite search field for toolbars and the application header.",
+      "html": "<label class=\"ds-search\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><circle cx=\"11\" cy=\"11\" r=\"7\"/><path d=\"m20 20-3.5-3.5\"/></svg><input type=\"search\" placeholder=\"Buscar registros...\" aria-label=\"Buscar registros\"></label>",
+      "css": ".ds-search { display:flex; align-items:center; gap:9px; width:min(360px,100%); min-height:40px; padding:0 12px; color:#98a2b3; background:#fff; border:1px solid var(--color-border,#e4e7ec); border-radius:8px; transition:border-color 160ms ease,box-shadow 160ms ease,color 160ms ease; } .ds-search:focus-within { color:var(--color-primary,#2563eb); border-color:#84adff; box-shadow:0 0 0 3px rgb(37 99 235 / 10%); } .ds-search svg { width:18px; height:18px; flex:none; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; } .ds-search input { width:100%; min-width:0; color:var(--color-text,#172033); font:400 12px/1.4 Inter,system-ui,sans-serif; background:transparent; border:0; outline:0; } .ds-search input::placeholder { color:#98a2b3; }"
+    },
+    {
+      "name": "Active Sidebar Destination",
+      "kind": "nav",
+      "refersTo": "navigation-active",
+      "description": "The selected destination in the persistent Dispatch Navy module navigation.",
+      "html": "<a class=\"ds-nav-link ds-nav-link-active\" href=\"#\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><rect x=\"3\" y=\"3\" width=\"7\" height=\"7\" rx=\"1\"/><rect x=\"14\" y=\"3\" width=\"7\" height=\"7\" rx=\"1\"/><rect x=\"3\" y=\"14\" width=\"7\" height=\"7\" rx=\"1\"/><rect x=\"14\" y=\"14\" width=\"7\" height=\"7\" rx=\"1\"/></svg><span>Resumen</span></a>",
+      "css": ".ds-nav-link { display:flex; align-items:center; gap:12px; min-height:46px; padding:10px 13px; color:#98a2b3; font:500 14px/1.4 Inter,system-ui,sans-serif; text-decoration:none; background:transparent; border-radius:9px; transition:color 160ms ease,background-color 160ms ease,transform 160ms ease; } .ds-nav-link svg { width:20px; height:20px; fill:none; stroke:currentColor; stroke-width:1.9; } .ds-nav-link:hover,.ds-nav-link:focus-visible { color:#fff; background:var(--color-sidebar-hover,#1d2939); transform:translateX(2px); outline:0; } .ds-nav-link-active,.ds-nav-link-active:hover { color:#fff; background:var(--color-primary,#2563eb); box-shadow:0 7px 18px rgb(37 99 235 / 22%); }"
+    },
+    {
+      "name": "Operational Summary Card",
+      "kind": "card",
+      "refersTo": "card-operational",
+      "description": "A fixed-height metric card pairing a quiet label with a strong value and semantic cue.",
+      "html": "<article class=\"ds-summary-card\"><span class=\"ds-summary-icon\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M6 17h12l1-8a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4l1 8Z\"/><path d=\"M8 17v2m8-2v2M8 10h8\"/></svg></span><div><span class=\"ds-summary-label\">Líneas operativas</span><strong>18</strong><small>2 con alertas menores</small></div></article>",
+      "css": ".ds-summary-card { display:flex; align-items:center; gap:16px; height:112px; padding:20px; color:var(--color-text,#172033); background:#fff; border:1px solid var(--color-border,#e4e7ec); border-radius:13px; box-shadow:0 3px 12px rgb(16 24 40 / 3%); font-family:Inter,system-ui,sans-serif; } .ds-summary-icon { display:grid; width:44px; height:44px; flex:none; place-items:center; color:#175cd3; background:#eff8ff; border-radius:11px; } .ds-summary-icon svg { width:22px; height:22px; fill:none; stroke:currentColor; stroke-width:1.9; stroke-linecap:round; stroke-linejoin:round; } .ds-summary-card div { min-width:0; } .ds-summary-label,.ds-summary-card small { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; } .ds-summary-label { color:#667085; font-size:12px; font-weight:500; } .ds-summary-card strong { display:block; margin:6px 0 4px; font-size:24px; line-height:1.1; letter-spacing:-.03em; } .ds-summary-card small { color:#98a2b3; font-size:10px; }"
+    },
+    {
+      "name": "Operational Status Chip",
+      "kind": "chip",
+      "refersTo": "chip-success",
+      "description": "A text-first semantic status marker with a supporting signal dot.",
+      "html": "<span class=\"ds-status-chip\"><span aria-hidden=\"true\"></span>Operativa</span>",
+      "css": ".ds-status-chip { display:inline-flex; align-items:center; gap:6px; padding:5px 8px; color:#027a48; font:700 10px/1.2 Inter,system-ui,sans-serif; background:#ecfdf3; border-radius:999px; } .ds-status-chip > span { width:6px; height:6px; background:#12b76a; border-radius:50%; }"
+    },
+    {
+      "name": "Operational Panel",
+      "kind": "card",
+      "refersTo": "card-operational",
+      "description": "A bordered data container with a compact header and divided metro-specific records.",
+      "html": "<article class=\"ds-panel\"><header><div><span>TIEMPO REAL</span><h3>Estado de líneas</h3></div><span class=\"ds-live\">En vivo</span></header><div class=\"ds-line-row\"><b>A</b><div><strong>Eighth Avenue Express</strong><small>Operativa</small></div><em>A tiempo</em></div><div class=\"ds-line-row\"><b class=\"ds-route-red\">4</b><div><strong>Lexington Avenue Express</strong><small>Demoras</small></div><em class=\"ds-delay\">8 min</em></div></article>",
+      "css": ".ds-panel { width:min(420px,100%); padding:20px; color:var(--color-text,#172033); background:#fff; border:1px solid var(--color-border,#e4e7ec); border-radius:13px; box-shadow:0 3px 12px rgb(16 24 40 / 3%); font-family:Inter,system-ui,sans-serif; } .ds-panel header { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:12px; } .ds-panel header span:first-child { color:#98a2b3; font-size:10px; font-weight:700; letter-spacing:.06em; } .ds-panel h3 { margin:4px 0 0; font-size:16px; } .ds-live { padding:5px 8px; color:#027a48; font-size:10px; font-weight:700; background:#ecfdf3; border-radius:999px; } .ds-line-row { display:grid; grid-template-columns:40px minmax(0,1fr) auto; align-items:center; gap:11px; min-height:53px; border-bottom:1px solid #f0f2f5; } .ds-line-row:last-child { border-bottom:0; } .ds-line-row b { display:grid; width:31px; height:31px; place-items:center; color:#fff; font-size:13px; background:#0039a6; border-radius:50%; } .ds-line-row b.ds-route-red { background:#00933c; } .ds-line-row strong,.ds-line-row small { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; } .ds-line-row strong { color:#344054; font-size:11px; } .ds-line-row small { margin-top:3px; color:#98a2b3; font-size:10px; } .ds-line-row em { padding:4px 7px; color:#027a48; font-size:9px; font-style:normal; font-weight:700; background:#ecfdf3; border-radius:6px; } .ds-line-row em.ds-delay { color:#b54708; background:#fffaeb; }"
+    },
+    {
+      "name": "Administrative Dialog",
+      "kind": "custom",
+      "refersTo": "dialog",
+      "description": "The elevated two-column form container used to create and edit administrative records.",
+      "html": "<section class=\"ds-dialog\" role=\"dialog\" aria-labelledby=\"ds-dialog-title\"><header><div><h2 id=\"ds-dialog-title\">Nueva línea</h2><p>Completa la información operativa.</p></div><button type=\"button\" aria-label=\"Cerrar\">×</button></header><div class=\"ds-dialog-grid\"><label>Identificador<input placeholder=\"Ej. A\"></label><label>Estado<select><option>Operativa</option></select></label></div><footer><button class=\"ds-dialog-cancel\" type=\"button\">Cancelar</button><button class=\"ds-dialog-save\" type=\"button\">Guardar</button></footer></section>",
+      "css": ".ds-dialog { width:min(720px,100%); overflow:hidden; color:var(--color-text,#172033); background:#fff; border:1px solid var(--color-border,#e4e7ec); border-radius:15px; box-shadow:0 24px 60px rgb(15 23 42 / 28%); font-family:Inter,system-ui,sans-serif; } .ds-dialog header { display:flex; align-items:flex-start; justify-content:space-between; gap:20px; padding:21px 23px; border-bottom:1px solid var(--color-border,#e4e7ec); } .ds-dialog h2 { margin:0; font-size:19px; } .ds-dialog p { margin:5px 0 0; color:#667085; font-size:11px; } .ds-dialog header button { display:grid; width:34px; height:34px; place-items:center; color:#667085; background:#f9fafb; border:1px solid var(--color-border,#e4e7ec); border-radius:8px; font-size:20px; cursor:pointer; } .ds-dialog header button:hover,.ds-dialog header button:focus-visible { color:#344054; background:#f2f4f7; outline:2px solid #84adff; outline-offset:2px; } .ds-dialog-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:17px; padding:23px; } .ds-dialog label { display:grid; gap:7px; color:#344054; font-size:11px; font-weight:600; } .ds-dialog input,.ds-dialog select { min-height:42px; padding:0 12px; color:#172033; background:#fff; border:1px solid #d0d5dd; border-radius:8px; outline:0; } .ds-dialog input:focus,.ds-dialog select:focus { border-color:#84adff; box-shadow:0 0 0 3px rgb(37 99 235 / 10%); } .ds-dialog footer { display:flex; justify-content:flex-end; gap:10px; padding:16px 23px; background:#fcfcfd; border-top:1px solid var(--color-border,#e4e7ec); } .ds-dialog footer button { min-height:40px; padding:0 15px; font-size:11px; font-weight:700; border-radius:8px; cursor:pointer; } .ds-dialog-cancel { color:#344054; background:#fff; border:1px solid #d0d5dd; } .ds-dialog-save { color:#fff; background:var(--color-primary,#2563eb); border:1px solid var(--color-primary,#2563eb); } .ds-dialog-cancel:hover { background:#f9fafb; } .ds-dialog-save:hover { background:var(--color-primary-dark,#1d4ed8); } @media (max-width:640px) { .ds-dialog { border-radius:16px 16px 0 0; } .ds-dialog-grid { grid-template-columns:1fr; padding:18px; } .ds-dialog footer button { flex:1; } }"
+    },
+    {
+      "name": "Signature Entry Button",
+      "kind": "button",
+      "refersTo": "button-entry-signature",
+      "description": "The expressive liquid-fill capsule reserved for login and exceptional entry moments.",
+      "html": "<div class=\"ds-entry-demo\"><button class=\"ds-entry-button\" type=\"button\"><span class=\"ds-entry-label\">Ingresar al sistema</span><span class=\"ds-entry-inner\" aria-hidden=\"true\"><span class=\"ds-entry-blobs\"><span></span><span></span><span></span><span></span></span></span></button><svg class=\"ds-entry-filter\" aria-hidden=\"true\"><defs><filter id=\"ds-entry-goo\"><feGaussianBlur in=\"SourceGraphic\" stdDeviation=\"10\" result=\"blur\"/><feColorMatrix in=\"blur\" mode=\"matrix\" values=\"1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 19 -9\" result=\"goo\"/><feBlend in=\"SourceGraphic\" in2=\"goo\"/></filter></defs></svg></div>",
+      "css": ".ds-entry-demo { width:min(420px,100%); } .ds-entry-button { position:relative; z-index:1; isolation:isolate; width:100%; min-height:56px; padding:0 28px; overflow:visible; color:#0505a9; font:800 14px/1.2 Inter,system-ui,sans-serif; letter-spacing:.035em; text-transform:uppercase; background:transparent; border:0; border-radius:30px; transition:color 500ms ease,transform 180ms ease; cursor:pointer; } .ds-entry-button::before { position:absolute; z-index:3; inset:0; content:\"\"; border:2px solid #0505a9; border-radius:30px; pointer-events:none; } .ds-entry-label { position:relative; z-index:2; } .ds-entry-inner { position:absolute; z-index:0; inset:0; overflow:hidden; background:#fff; border-radius:30px; } .ds-entry-blobs { position:relative; display:block; height:100%; filter:url(#ds-entry-goo); } .ds-entry-blobs > span { position:absolute; top:2px; width:25%; height:100%; background:#0505a9; border-radius:100%; transform:translate3d(0,150%,0) scale(1.4); transition:transform 450ms ease; } .ds-entry-blobs > span:nth-child(1) { left:0; } .ds-entry-blobs > span:nth-child(2) { left:30%; transition-delay:80ms; } .ds-entry-blobs > span:nth-child(3) { left:60%; transition-delay:160ms; } .ds-entry-blobs > span:nth-child(4) { left:90%; transition-delay:240ms; } .ds-entry-button:hover,.ds-entry-button:focus-visible { color:#fff; transform:translateY(-1px); outline:0; } .ds-entry-button:hover .ds-entry-blobs > span,.ds-entry-button:focus-visible .ds-entry-blobs > span { transform:translateZ(0) scale(1.4); } .ds-entry-button:focus-visible::before { box-shadow:0 0 0 4px rgb(5 5 169 / 16%); } .ds-entry-filter { position:absolute; width:0; height:0; pointer-events:none; } @media (prefers-reduced-motion:reduce) { .ds-entry-button,.ds-entry-blobs > span { transition:none; } }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Dispatch Console",
+    "overview": "The Dispatch Console treats the interface as a calm, dependable operations room: Dispatch Navy anchors the shell, Signal Blue identifies action and active state, and Console Mist keeps dense administrative data readable for long sessions. The system is professional and specific to metro work, using route discs, status signals, operational labels, tables, and live-state cues instead of decorative dashboard tropes.\n\nRoutine screens stay compact and decisive, with precise spacing, restrained interaction, and a clear progression from page heading to summary, filters, and records. Visual intensity is reserved for meaningful state and exceptional entry moments; the login may become more expressive, while the working console remains quiet enough for scanning and decision-making.",
+    "keyCharacteristics": [
+      "Dark Dispatch Navy navigation paired with bright, low-noise work surfaces.",
+      "Compact Inter typography with small uppercase operational labels and firm numeric emphasis.",
+      "Signal Blue reserved for action, selection, focus, and information—not ambient decoration.",
+      "Thin dividers, quiet tonal layering, and restrained shadows supporting dense data.",
+      "Metro-specific status discs, route markers, tables, and operational language."
+    ],
+    "rules": [
+      {
+        "name": "The Signal, Not Spectacle Rule",
+        "body": "Signal Blue marks action, selection, focus, and useful information; it does not wash entire routine screens in color.",
+        "section": "colors"
+      },
+      {
+        "name": "The Status Has Meaning Rule",
+        "body": "Green, amber, and red always communicate operational state and must be paired with text, icons, or labels rather than color alone.",
+        "section": "colors"
+      },
+      {
+        "name": "The Compact Hierarchy Rule",
+        "body": "Dense screens use small labels and restrained body text, but page titles, key values, and actions must remain immediately distinguishable.",
+        "section": "typography"
+      },
+      {
+        "name": "The Operational Horizon Rule",
+        "body": "Preserve scan lines, aligned controls, and readable records; collapse structure by priority instead of shrinking dense content past usability.",
+        "section": "layout"
+      },
+      {
+        "name": "The Layered Operational Rule",
+        "body": "Borders and tone do the everyday structural work; strong shadows appear only when a surface genuinely moves above the console.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Soft, Not Playful Rule",
+        "body": "Corners reduce visual friction, but geometry remains compact, aligned, and task-oriented rather than bubbly or ornamental.",
+        "section": "shapes"
+      },
+      {
+        "name": "The Routine vs. Entry Rule",
+        "body": "Routine work uses quiet, rectangular controls; expressive motion and the blob capsule belong only to exceptional entry moments.",
+        "section": "components"
+      }
+    ],
+    "dos": [
+      "Do preserve the Dispatch Navy shell, Console Mist canvas, and white operational surfaces as the stable hierarchy.",
+      "Do use Signal Blue consistently for primary action, active navigation, focus, and useful information.",
+      "Do keep status color semantic and reinforce it with readable labels or icons.",
+      "Do preserve compact tables, aligned toolbars, and responsive priority-based collapse.",
+      "Do reserve expressive gradients and the animated blob treatment for brand and entry moments."
+    ],
+    "donts": [
+      "Don't turn the console into a futuristic neon or cyberpunk control room.",
+      "Don't use excessive glassmorphism, exaggerated gradients, or pervasive translucent cards.",
+      "Don't default to a generic card-heavy SaaS dashboard when a table, route marker, status signal, or operational panel is more specific.",
+      "Don't repeat the blob button across routine create, save, filter, or row actions.",
+      "Don't visually imply that Metro NY is an official MTA product or reproduce an official identity it does not own."
+    ]
+  }
+}
