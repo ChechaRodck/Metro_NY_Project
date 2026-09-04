@@ -22,6 +22,17 @@ import {
 } from "lucide-react";
 import "../styles/layout.css";
 import UserMenu from "../components/UserMenu";
+
+const MOBILE_SIDEBAR_QUERY = "(max-width: 900px)";
+const SIDEBAR_FOCUSABLE_SELECTOR = [
+  "a[href]",
+  "button:not([disabled])",
+  "input:not([disabled])",
+  "select:not([disabled])",
+  "textarea:not([disabled])",
+  '[tabindex]:not([tabindex="-1"])',
+].join(",");
+
 const navigation = [
   {
     to: "/",
@@ -112,14 +123,28 @@ function normalizeText(value) {
 function DashboardLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [isMobileSidebar, setIsMobileSidebar] = useState(() =>
+    typeof window !== "undefined"
+      ? window.matchMedia(MOBILE_SIDEBAR_QUERY).matches
+      : false,
+  );
   const [searchQuery, setSearchQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const [notificationOpen, setNotificationOpen] = useState(false);
   const [notifications, setNotifications] = useState(initialNotifications);
   const searchRef = useRef(null);
   const notificationRef = useRef(null);
+  const sidebarRef = useRef(null);
+  const sidebarCloseRef = useRef(null);
+  const mobileMenuButtonRef = useRef(null);
+  const desktopCollapseButtonRef = useRef(null);
   const navigate = useNavigate();
   const location = useLocation();
+
+  const mobileDrawerActive = isMobileSidebar && sidebarOpen;
+  const sidebarHidden = isMobileSidebar
+    ? !sidebarOpen
+    : sidebarCollapsed;
 
   const searchResults = useMemo(() => {
     const normalizedQuery = normalizeText(searchQuery);
@@ -141,6 +166,51 @@ function DashboardLayout() {
     setSearchOpen(false);
     setNotificationOpen(false);
   }, [location.pathname]);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia(MOBILE_SIDEBAR_QUERY);
+
+    function handleSidebarContextChange(event) {
+      const focusWasInsideSidebar = sidebarRef.current?.contains(
+        document.activeElement,
+      );
+      const focusWasOnMobileClose =
+        document.activeElement === sidebarCloseRef.current;
+
+      setIsMobileSidebar(event.matches);
+      setSidebarOpen(false);
+
+      if (!focusWasInsideSidebar) {
+        return;
+      }
+
+      window.requestAnimationFrame(() => {
+        if (event.matches) {
+          mobileMenuButtonRef.current?.focus();
+        } else if (sidebarCollapsed || focusWasOnMobileClose) {
+          desktopCollapseButtonRef.current?.focus();
+        }
+      });
+    }
+
+    mediaQuery.addEventListener("change", handleSidebarContextChange);
+
+    return () => {
+      mediaQuery.removeEventListener("change", handleSidebarContextChange);
+    };
+  }, [sidebarCollapsed]);
+
+  useEffect(() => {
+    if (!mobileDrawerActive) {
+      return undefined;
+    }
+
+    const focusFrame = window.requestAnimationFrame(() => {
+      sidebarCloseRef.current?.focus();
+    });
+
+    return () => window.cancelAnimationFrame(focusFrame);
+  }, [mobileDrawerActive]);
 
   useEffect(() => {
     function handlePointerDown(event) {
@@ -211,41 +281,84 @@ function DashboardLayout() {
     );
   }
 
+  function openMobileSidebar() {
+    setSearchOpen(false);
+    setNotificationOpen(false);
+    setSidebarOpen(true);
+  }
+
+  function closeMobileSidebar({ restoreFocus = true } = {}) {
+    setSidebarOpen(false);
+
+    if (restoreFocus) {
+      window.requestAnimationFrame(() => {
+        mobileMenuButtonRef.current?.focus();
+      });
+    }
+  }
+
+  function handleSidebarKeyDown(event) {
+    if (!mobileDrawerActive) {
+      return;
+    }
+
+    if (event.key === "Escape") {
+      event.preventDefault();
+      closeMobileSidebar();
+      return;
+    }
+
+    if (event.key !== "Tab") {
+      return;
+    }
+
+    const focusableElements = Array.from(
+      sidebarRef.current?.querySelectorAll(SIDEBAR_FOCUSABLE_SELECTOR) ?? [],
+    ).filter((element) => element.getClientRects().length > 0);
+
+    if (focusableElements.length === 0) {
+      event.preventDefault();
+      sidebarRef.current?.focus();
+      return;
+    }
+
+    const firstElement = focusableElements[0];
+    const lastElement = focusableElements[focusableElements.length - 1];
+
+    if (event.shiftKey && document.activeElement === firstElement) {
+      event.preventDefault();
+      lastElement.focus();
+    } else if (!event.shiftKey && document.activeElement === lastElement) {
+      event.preventDefault();
+      firstElement.focus();
+    }
+  }
+
   return (
     <div className="app-shell">
-      {sidebarOpen && (
+      {mobileDrawerActive && (
         <button
           type="button"
           className="sidebar-overlay"
           aria-label="Cerrar menú"
-          onClick={() => setSidebarOpen(false)}
+          aria-hidden="true"
+          tabIndex={-1}
+          onClick={() => closeMobileSidebar()}
         />
       )}
 
-
-     <aside
-      className={`sidebar ${sidebarOpen ? "sidebar--open" : ""}`}
-      style={{
-  width: sidebarCollapsed ? "0px" : "270px",
-  minWidth: sidebarCollapsed ? "0px" : "270px",
-  opacity: sidebarCollapsed ? 0 : 1,
-  transform: sidebarCollapsed
-    ? "translateX(-18px)"
-    : "translateX(0)",
-  overflowX: "hidden",
-  whiteSpace: "nowrap",
-  pointerEvents: sidebarCollapsed ? "none" : "auto",
-  borderRightColor: sidebarCollapsed
-    ? "transparent"
-    : "#243044",
-  transition: `
-    width 550ms cubic-bezier(0.4, 0, 0.2, 1),
-    min-width 550ms cubic-bezier(0.4, 0, 0.2, 1),
-    opacity 350ms ease,
-    transform 550ms cubic-bezier(0.4, 0, 0.2, 1)
-  `,
-}}
-    >
+      <aside
+        id="primary-sidebar"
+        ref={sidebarRef}
+        className={`sidebar ${
+          sidebarCollapsed ? "sidebar--collapsed" : ""
+        } ${mobileDrawerActive ? "sidebar--open" : ""}`}
+        aria-label="Navegación principal"
+        aria-hidden={sidebarHidden}
+        inert={sidebarHidden}
+        tabIndex={-1}
+        onKeyDown={handleSidebarKeyDown}
+      >
         <div className="sidebar__header">
           <div className="brand">
             <div className="brand__icon">M</div>
@@ -260,7 +373,8 @@ function DashboardLayout() {
             type="button"
             className="sidebar__close"
             aria-label="Cerrar menú"
-            onClick={() => setSidebarOpen(false)}
+            ref={sidebarCloseRef}
+            onClick={() => closeMobileSidebar()}
           >
             <X size={21} />
           </button>
@@ -280,7 +394,9 @@ function DashboardLayout() {
                 className={({ isActive }) =>
                   `sidebar__link ${isActive ? "sidebar__link--active" : ""}`
                 }
-                onClick={() => setSidebarOpen(false)}
+                onClick={() =>
+                  closeMobileSidebar({ restoreFocus: false })
+                }
               >
                 <Icon size={20} strokeWidth={1.9} />
                 <span>{item.label}</span>
@@ -301,39 +417,43 @@ function DashboardLayout() {
         </div>
       </aside>
 
-      <div className="main-area">
+      <div
+        className="main-area"
+        aria-hidden={mobileDrawerActive ? true : undefined}
+        inert={mobileDrawerActive}
+      >
         <header className="topbar">
           <div className="topbar__left">
             <button
-  type="button"
-  aria-label={sidebarCollapsed ? "Mostrar menú lateral" : "Ocultar menú lateral"}
-  title={sidebarCollapsed ? "Mostrar menú lateral" : "Ocultar menú lateral"}
-  onClick={() => setSidebarCollapsed((valorActual) => !valorActual)}
-  style={{
-    display: "grid",
-    flexShrink: 0,
-    width: "42px",
-    height: "42px",
-    padding: 0,
-    placeItems: "center",
-    color: "#2563eb",
-    fontSize: "25px",
-    fontWeight: 700,
-    background: "#ffffff",
-    border: "1px solid #d0d5dd",
-    borderRadius: "10px",
-    boxShadow: "0 3px 10px rgba(16, 24, 40, 0.10)",
-    cursor: "pointer",
-    transition: "color 200ms ease, background-color 200ms ease",
-  }}
->
-  {sidebarCollapsed ? "»" : "«"}
-</button>
+              type="button"
+              ref={desktopCollapseButtonRef}
+              className="sidebar-collapse-button"
+              aria-label={
+                sidebarCollapsed
+                  ? "Mostrar menú lateral"
+                  : "Ocultar menú lateral"
+              }
+              title={
+                sidebarCollapsed
+                  ? "Mostrar menú lateral"
+                  : "Ocultar menú lateral"
+              }
+              aria-controls="primary-sidebar"
+              aria-expanded={!sidebarCollapsed}
+              onClick={() =>
+                setSidebarCollapsed((valorActual) => !valorActual)
+              }
+            >
+              {sidebarCollapsed ? "»" : "«"}
+            </button>
             <button
               type="button"
+              ref={mobileMenuButtonRef}
               className="menu-button"
               aria-label="Abrir menú"
-              onClick={() => setSidebarOpen(true)}
+              aria-controls="primary-sidebar"
+              aria-expanded={mobileDrawerActive}
+              onClick={openMobileSidebar}
             >
               <Menu size={22} />
             </button>
