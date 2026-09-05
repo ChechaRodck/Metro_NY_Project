@@ -25,6 +25,42 @@
   --motion-ease-dispatch: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+html:has(.app-shell) {
+  --auth-stage: #050b14;
+  --auth-chassis: #0b1424;
+  --auth-command: #101c2e;
+  --auth-workspace: #132033;
+  --auth-surface: #18273b;
+  --auth-surface-hover: #223650;
+  --auth-surface-raised: #1e3048;
+  --auth-surface-selected: #1b3659;
+  --auth-urgent: #081321;
+  --auth-border: #2b3c54;
+  --auth-border-strong: #3a506e;
+  --auth-text-primary: #f7f9fc;
+  --auth-text-secondary: #b7c3d3;
+  --auth-text-quiet: #8fa1b8;
+  --auth-signal: #60a5fa;
+  --auth-focus: #84caff;
+  --auth-danger-surface: #351a22;
+  --auth-danger-border: #6f2a32;
+  --auth-danger-text: #ffb4ad;
+  --auth-warning-surface: #332717;
+  --auth-warning-border: #6b4b19;
+  --auth-warning-text: #fdc57b;
+  --auth-success-surface: #102d26;
+  --auth-success-border: #1f5b49;
+  --auth-success-text: #74d6aa;
+  --auth-info-surface: #142a46;
+  --auth-info-border: #254d7a;
+  --auth-info-text: #93c5fd;
+  --auth-neutral-surface: #243247;
+  --auth-neutral-text: #c5cfdd;
+  --auth-scroll-track: #0d1828;
+  --auth-scroll-thumb: #536b89;
+  --auth-legacy-canvas: #f4f7fb;
+}
+
 * {
   box-sizing: border-box;
 }
