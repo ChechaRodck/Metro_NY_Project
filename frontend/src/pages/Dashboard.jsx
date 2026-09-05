@@ -3,11 +3,14 @@ import { useNavigate } from "react-router";
 import {
   ArrowUpRight,
   CalendarClock,
+  CheckCircle2,
   Clock3,
   RefreshCw,
+  Route,
   TrainFront,
   TriangleAlert,
   UsersRound,
+  Wrench,
 } from "lucide-react";
 import {
   Area,
@@ -27,32 +30,58 @@ import {
 } from "../data/dashboardData";
 import "../styles/dashboard.css";
 
-const statIcons = {
-  train: TrainFront,
-  calendar: CalendarClock,
-  users: UsersRound,
-  alert: TriangleAlert,
-};
-
 function formatPassengers(value) {
   return `${(value / 1000000).toFixed(1)} M`;
 }
 
 function getTripStatusClass(status) {
   if (status === "Retrasado") {
-    return "status-badge status-badge--danger";
+    return "dashboard-trip-status dashboard-trip-status--danger";
   }
 
   if (status === "En abordaje") {
-    return "status-badge status-badge--success";
+    return "dashboard-trip-status dashboard-trip-status--success";
   }
 
-  return "status-badge status-badge--neutral";
+  return "dashboard-trip-status dashboard-trip-status--neutral";
 }
 
 function getSeverityClass(severity) {
-  return `incident-severity incident-severity--${severity.toLowerCase()}`;
+  return `dashboard-incident-severity dashboard-incident-severity--${severity.toLowerCase()}`;
 }
+
+function getLineStateIcon(status) {
+  if (status === "Demoras") {
+    return TriangleAlert;
+  }
+
+  if (status === "Mantenimiento") {
+    return Wrench;
+  }
+
+  return CheckCircle2;
+}
+
+function getRouteTextColor(hexColor) {
+  const channels = hexColor
+    .replace("#", "")
+    .match(/.{2}/g)
+    .map((channel) => Number.parseInt(channel, 16) / 255)
+    .map((channel) =>
+      channel <= 0.04045
+        ? channel / 12.92
+        : ((channel + 0.055) / 1.055) ** 2.4,
+    );
+  const relativeLuminance =
+    channels[0] * 0.2126 + channels[1] * 0.7152 + channels[2] * 0.0722;
+  const contrastWithWhite = 1.05 / (relativeLuminance + 0.05);
+
+  return contrastWithWhite >= 4.5 ? "#ffffff" : "#050b14";
+}
+
+const lineColorByCode = new Map(
+  lineStatus.map((line) => [line.code, line.color]),
+);
 
 function Dashboard() {
   const [lastUpdate, setLastUpdate] = useState(new Date());
@@ -65,6 +94,34 @@ function Dashboard() {
     month: "long",
     year: "numeric",
   }).format(new Date());
+
+  const linesStat = dashboardStats.find((stat) => stat.icon === "train");
+  const tripsStat = dashboardStats.find((stat) => stat.icon === "calendar");
+  const passengersStat = dashboardStats.find((stat) => stat.icon === "users");
+  const incidentsStat = dashboardStats.find((stat) => stat.icon === "alert");
+  const leadIncident =
+    recentIncidents.find((incident) => incident.severity === "Alta") ??
+    recentIncidents[0];
+  const supportingIncidents = recentIncidents
+    .filter((incident) => incident.id !== leadIncident?.id)
+    .slice(0, 2);
+  const incidentTotal = Number.parseInt(incidentsStat?.value ?? "0", 10);
+  const remainingIncidentCount = Math.max(
+    incidentTotal - (leadIncident ? 1 : 0) - supportingIncidents.length,
+    0,
+  );
+  const orderedLines = [...lineStatus].sort((firstLine, secondLine) => {
+    const firstIsOperational = firstLine.status === "Operativa";
+    const secondIsOperational = secondLine.status === "Operativa";
+
+    return Number(firstIsOperational) - Number(secondIsOperational);
+  });
+  const passengerPeak = passengerFlow.reduce((peak, point) =>
+    point.passengers > peak.passengers ? point : peak,
+  );
+  const passengerMinimum = passengerFlow.reduce((minimum, point) =>
+    point.passengers < minimum.passengers ? point : minimum,
+  );
 
   function handleRefresh() {
     if (isRefreshing) {
@@ -81,223 +138,306 @@ function Dashboard() {
 
   return (
     <div className="dashboard">
-      <section className="dashboard-heading">
-        <div>
-          <div className="dashboard-heading__tag">
-            <span className="dashboard-heading__pulse" />
-            Datos de demostración
+      <section className="dashboard-heading" aria-labelledby="dashboard-title">
+        <div className="dashboard-heading__copy">
+          <div className="dashboard-heading__title-row">
+            <h2 id="dashboard-title">Situación de la red</h2>
+            <span className="dashboard-scenario-label">Escenario simulado</span>
           </div>
 
-          <h2>Resumen operativo</h2>
-
           <p>
-            Supervisa el estado general de la red, los viajes y las incidencias.
+            Una vista priorizada del estado operativo registrado para esta
+            demostración académica.
           </p>
+
+          <p className="dashboard-date">{currentDate}</p>
         </div>
 
         <div className="dashboard-heading__actions">
-          <span className="last-update">
-            Actualizado a las{" "}
-            {lastUpdate.toLocaleTimeString("es-GT", {
-              hour: "2-digit",
-              minute: "2-digit",
-            })}
+          <span
+            className="dashboard-last-update"
+            role="status"
+            aria-live="polite"
+            aria-atomic="true"
+          >
+            {isRefreshing
+              ? "Actualizando vista de demostración…"
+              : `Vista actualizada a las ${lastUpdate.toLocaleTimeString(
+                  "es-GT",
+                  {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  },
+                )}`}
           </span>
 
           <button
             type="button"
-            className="refresh-button"
+            className="dashboard-refresh-button"
             onClick={handleRefresh}
             disabled={isRefreshing}
+            aria-busy={isRefreshing}
           >
             <RefreshCw
               size={17}
-              className={isRefreshing ? "refresh-button__icon--spin" : ""}
+              aria-hidden="true"
+              className={
+                isRefreshing ? "dashboard-refresh-button__icon--spin" : ""
+              }
             />
-            {isRefreshing ? "Actualizando..." : "Actualizar datos"}
+            {isRefreshing ? "Actualizando…" : "Actualizar vista"}
           </button>
         </div>
       </section>
 
-      <p className="dashboard-date">{currentDate}</p>
+      <section
+        className="dashboard-situation-board"
+        aria-label="Tablero de situación operativa"
+      >
+        <section
+          className="dashboard-attention-zone"
+          aria-labelledby="attention-title"
+        >
+          <svg
+            className="dashboard-attention-zone__network"
+            viewBox="0 0 520 520"
+            preserveAspectRatio="xMidYMid slice"
+            aria-hidden="true"
+            focusable="false"
+          >
+            <path d="M-24 104H132L204 176H548" />
+            <path d="M56-18V126L142 212V538" />
+            <path d="M-12 392H136L244 284H532" />
+            <path d="M306-12V126L366 186V532" />
+            <circle cx="132" cy="104" r="7" />
+            <circle cx="204" cy="176" r="7" />
+            <circle cx="142" cy="212" r="7" />
+            <circle cx="244" cy="284" r="7" />
+            <circle cx="366" cy="186" r="7" />
+            <circle cx="366" cy="392" r="7" />
+          </svg>
 
-      <section className="stats-grid" aria-label="Estadísticas principales">
-        {dashboardStats.map((stat) => {
-          const Icon = statIcons[stat.icon];
+          <div className="dashboard-attention-zone__header">
+            <div>
+              <h3 id="attention-title">Requiere atención</h3>
+              <p>Incidentes registrados en el escenario actual.</p>
+            </div>
 
-          return (
-            <article className="stat-card" key={stat.id}>
-              <div className={`stat-card__icon stat-card__icon--${stat.tone}`}>
-                <Icon size={22} />
-              </div>
+            <div
+              className="dashboard-attention-count"
+              aria-label={`${incidentsStat.value} incidentes activos`}
+            >
+              <TriangleAlert size={18} aria-hidden="true" />
+              <strong>{incidentsStat.value}</strong>
+              <span>activos</span>
+            </div>
+          </div>
 
-              <div className="stat-card__content">
-                <span className="stat-card__label">{stat.label}</span>
-
-                <div className="stat-card__value-row">
-                  <strong>{stat.value}</strong>
-
-                  <span
-                    className={`stat-card__trend ${
-                      stat.trend.startsWith("-")
-                        ? "stat-card__trend--positive"
-                        : ""
-                    }`}
-                  >
-                    {stat.trend}
+          <div className="dashboard-attention-zone__content">
+            {leadIncident && (
+              <article className="dashboard-lead-incident">
+                <div className="dashboard-lead-incident__topline">
+                  <span className={getSeverityClass(leadIncident.severity)}>
+                    Prioridad {leadIncident.severity.toLowerCase()}
+                  </span>
+                  <span className="dashboard-incident-time">
+                    <Clock3 size={14} aria-hidden="true" />
+                    {leadIncident.time}
                   </span>
                 </div>
 
-                <span className="stat-card__detail">{stat.detail}</span>
-              </div>
-            </article>
-          );
-        })}
-      </section>
+                <span className="dashboard-lead-incident__id">
+                  {leadIncident.id}
+                </span>
+                <strong>{leadIncident.title}</strong>
+                <span>{leadIncident.location}</span>
+              </article>
+            )}
 
-      <section className="dashboard-grid dashboard-grid--primary">
-        <article className="dashboard-card chart-card">
-          <div className="dashboard-card__header">
+            <div className="dashboard-attention-zone__secondary">
+              <div className="dashboard-compact-incidents">
+                {supportingIncidents.map((incident) => (
+                  <article
+                    className="dashboard-compact-incident"
+                    key={incident.id}
+                  >
+                    <div className="dashboard-compact-incident__main">
+                      <span className={getSeverityClass(incident.severity)}>
+                        {incident.severity}
+                      </span>
+                      <strong>{incident.title}</strong>
+                    </div>
+
+                    <div className="dashboard-compact-incident__meta">
+                      <span>{incident.location}</span>
+                      <span>{incident.time}</span>
+                    </div>
+                  </article>
+                ))}
+              </div>
+
+              {remainingIncidentCount > 0 && (
+                <p className="dashboard-remaining-incidents">
+                  <strong>{remainingIncidentCount}</strong>{" "}
+                  {remainingIncidentCount === 1
+                    ? "incidente adicional registrado"
+                    : "incidentes adicionales registrados"}{" "}
+                  en el escenario.
+                </p>
+              )}
+            </div>
+          </div>
+
+          <button
+            type="button"
+            className="dashboard-route-action dashboard-route-action--dark"
+            onClick={() => navigate("/incidentes")}
+          >
+            Ver incidentes
+            <ArrowUpRight size={16} aria-hidden="true" />
+          </button>
+        </section>
+
+        <section
+          className="dashboard-snapshot-zone"
+          aria-labelledby="snapshot-title"
+        >
+          <div className="dashboard-snapshot-zone__header">
             <div>
-              <span className="dashboard-card__eyebrow">Últimos 7 días</span>
-              <h3>Flujo de pasajeros</h3>
+              <h3 id="snapshot-title">Estado registrado</h3>
+              <p>Instantánea de demostración</p>
+            </div>
+
+            <span className="dashboard-condition-label">
+              <TriangleAlert size={15} aria-hidden="true" />
+              Atención requerida
+            </span>
+          </div>
+
+          <p className="dashboard-condition-copy">
+            El escenario incluye demoras y servicio parcial en la red.
+          </p>
+
+          <div
+            className="dashboard-instrument-band"
+            aria-label="Lecturas operativas registradas"
+          >
+            <div className="dashboard-instrument">
+              <Route size={19} aria-hidden="true" />
+              <div>
+                <span>{linesStat.label}</span>
+                <strong>{linesStat.value}</strong>
+                <small>{linesStat.detail}</small>
+              </div>
+            </div>
+
+            <div className="dashboard-instrument">
+              <CalendarClock size={19} aria-hidden="true" />
+              <div>
+                <span>{tripsStat.label}</span>
+                <strong>{tripsStat.value}</strong>
+                <small>{tripsStat.detail}</small>
+              </div>
             </div>
 
             <button
               type="button"
-              className="text-button"
-              onClick={() => navigate("/reportes")}
+              className="dashboard-instrument-action"
+              onClick={() => navigate("/flota")}
             >
-              Ver reporte
-              <ArrowUpRight size={16} />
+              <TrainFront size={18} aria-hidden="true" />
+              <span>Consultar flota</span>
+              <ArrowUpRight size={15} aria-hidden="true" />
             </button>
           </div>
 
-          <div className="chart-container">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart
-                data={passengerFlow}
-                margin={{ top: 10, right: 10, left: -12, bottom: 0 }}
-              >
-                <defs>
-                  <linearGradient
-                    id="passengerGradient"
-                    x1="0"
-                    y1="0"
-                    x2="0"
-                    y2="1"
-                  >
-                    <stop offset="0%" stopColor="#2563eb" stopOpacity={0.35} />
-                    <stop offset="100%" stopColor="#2563eb" stopOpacity={0.02} />
-                  </linearGradient>
-                </defs>
-
-                <CartesianGrid
-                  stroke="#eaecf0"
-                  strokeDasharray="4 4"
-                  vertical={false}
-                />
-
-                <XAxis
-                  dataKey="day"
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fill: "#667085", fontSize: 12 }}
-                />
-
-                <YAxis
-                  axisLine={false}
-                  tickLine={false}
-                  tickFormatter={formatPassengers}
-                  tick={{ fill: "#667085", fontSize: 12 }}
-                />
-
-                <Tooltip
-                  formatter={(value) => [
-                    Number(value).toLocaleString("es-GT"),
-                    "Pasajeros",
-                  ]}
-                  contentStyle={{
-                    borderRadius: "10px",
-                    border: "1px solid #e4e7ec",
-                    boxShadow: "0 8px 20px rgb(16 24 40 / 10%)",
-                  }}
-                />
-
-                <Area
-                  type="monotone"
-                  dataKey="passengers"
-                  stroke="#2563eb"
-                  strokeWidth={3}
-                  fill="url(#passengerGradient)"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </article>
-
-        <article className="dashboard-card">
-          <div className="dashboard-card__header">
+          <div className="dashboard-line-section__header">
             <div>
-              <span className="dashboard-card__eyebrow">Tiempo real</span>
-              <h3>Estado de líneas</h3>
-            </div>
-
-            <span className="live-indicator">En vivo</span>
-          </div>
-
-          <div className="line-list">
-            {lineStatus.map((line) => (
-              <div className="line-item" key={line.id}>
-                <div
-                  className="line-item__code"
-                  style={{ "--line-color": line.color }}
-                >
-                  {line.code}
-                </div>
-
-                <div className="line-item__information">
-                  <strong>{line.name}</strong>
-                  <span>{line.status}</span>
-                </div>
-
-                <span
-                  className={`line-item__delay ${
-                    line.delay !== "A tiempo"
-                      ? "line-item__delay--warning"
-                      : ""
-                  }`}
-                >
-                  {line.delay}
-                </span>
-              </div>
-            ))}
-          </div>
-        </article>
-      </section>
-
-      <section className="dashboard-grid dashboard-grid--secondary">
-        <article className="dashboard-card trips-card">
-          <div className="dashboard-card__header">
-            <div>
-              <span className="dashboard-card__eyebrow">
-                Próximas operaciones
-              </span>
-              <h3>Viajes programados</h3>
+              <h4>Estado de líneas</h4>
+              <p>Las condiciones no operativas aparecen primero.</p>
             </div>
 
             <button
               type="button"
-              className="text-button"
+              className="dashboard-route-action"
+              onClick={() => navigate("/red")}
+            >
+              Ver red
+              <ArrowUpRight size={16} aria-hidden="true" />
+            </button>
+          </div>
+
+          <div className="dashboard-line-list">
+            {orderedLines.map((line) => {
+              const LineStateIcon = getLineStateIcon(line.status);
+              const isOperational = line.status === "Operativa";
+
+              return (
+                <div
+                  className={`dashboard-line-item ${
+                    isOperational ? "" : "dashboard-line-item--degraded"
+                  }`}
+                  key={line.id}
+                >
+                  <span
+                    className="dashboard-line-item__code"
+                    style={{
+                      "--line-color": line.color,
+                      "--line-text-color": getRouteTextColor(line.color),
+                    }}
+                    aria-label={`Línea ${line.code}`}
+                  >
+                    {line.code}
+                  </span>
+
+                  <div className="dashboard-line-item__information">
+                    <strong>{line.name}</strong>
+                    <span>{line.status}</span>
+                  </div>
+
+                  <span
+                    className={`dashboard-line-item__condition ${
+                      isOperational
+                        ? "dashboard-line-item__condition--normal"
+                        : "dashboard-line-item__condition--attention"
+                    }`}
+                  >
+                    <LineStateIcon size={15} aria-hidden="true" />
+                    {line.delay}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      </section>
+
+      <section
+        className="dashboard-operations-board"
+        aria-label="Operaciones y demanda registrada"
+      >
+        <article
+          className="dashboard-trips-panel"
+          aria-labelledby="trips-title"
+        >
+          <div className="dashboard-section-header">
+            <div>
+              <h3 id="trips-title">Próximos viajes programados</h3>
+              <p>Secuencia registrada para el escenario de hoy.</p>
+            </div>
+
+            <button
+              type="button"
+              className="dashboard-route-action"
               onClick={() => navigate("/operaciones")}
             >
-              Ver todos
-              <ArrowUpRight size={16} />
+              Ver operaciones
+              <ArrowUpRight size={16} aria-hidden="true" />
             </button>
           </div>
 
-          <div className="table-wrapper">
-            <table className="trips-table">
+          <div className="dashboard-table-wrapper">
+            <table className="dashboard-trips-table">
               <thead>
                 <tr>
                   <th>Viaje</th>
@@ -316,7 +456,19 @@ function Dashboard() {
                       <strong>{trip.id}</strong>
                     </td>
                     <td>
-                      <span className="route-code">{trip.route}</span>
+                      <span
+                        className="dashboard-route-code"
+                        style={{
+                          "--route-color":
+                            lineColorByCode.get(trip.route) ?? "#2563eb",
+                          "--route-text-color": getRouteTextColor(
+                            lineColorByCode.get(trip.route) ?? "#2563eb",
+                          ),
+                        }}
+                        aria-label={`Ruta ${trip.route}`}
+                      >
+                        {trip.route}
+                      </span>
                     </td>
                     <td>{trip.destination}</td>
                     <td>{trip.departure}</td>
@@ -333,36 +485,114 @@ function Dashboard() {
           </div>
         </article>
 
-        <article className="dashboard-card">
-          <div className="dashboard-card__header">
+        <figure
+          className="dashboard-passenger-panel"
+          aria-labelledby="passenger-title"
+          aria-describedby="passenger-summary"
+        >
+          <div className="dashboard-section-header">
             <div>
-              <span className="dashboard-card__eyebrow">
-                Requieren seguimiento
-              </span>
-              <h3>Incidentes recientes</h3>
+              <h3 id="passenger-title">Flujo estimado de pasajeros</h3>
+              <p>Lecturas registradas para esta demostración.</p>
             </div>
+
+            <button
+              type="button"
+              className="dashboard-route-action"
+              onClick={() => navigate("/reportes")}
+            >
+              Ver reporte
+              <ArrowUpRight size={16} aria-hidden="true" />
+            </button>
           </div>
 
-          <div className="incident-list">
-            {recentIncidents.map((incident) => (
-              <div className="incident-item" key={incident.id}>
-                <div className="incident-item__top">
-                  <span className={getSeverityClass(incident.severity)}>
-                    {incident.severity}
-                  </span>
-
-                  <span className="incident-item__time">
-                    <Clock3 size={13} />
-                    {incident.time}
-                  </span>
-                </div>
-
-                <strong>{incident.title}</strong>
-                <span>{incident.location}</span>
-              </div>
-            ))}
+          <div className="dashboard-passenger-panel__metric">
+            <UsersRound size={20} aria-hidden="true" />
+            <strong>{passengersStat.value}</strong>
+            <span>{passengersStat.detail}</span>
           </div>
-        </article>
+
+          <p className="dashboard-chart-context">
+            Serie registrada de lunes a domingo
+          </p>
+
+          <div
+            className="dashboard-chart"
+            aria-hidden="true"
+          >
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart
+                data={passengerFlow}
+                margin={{ top: 8, right: 8, left: -17, bottom: 0 }}
+              >
+                <CartesianGrid
+                  stroke="#e4e7ec"
+                  strokeDasharray="4 4"
+                  vertical={false}
+                />
+                <XAxis
+                  dataKey="day"
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fill: "#667085", fontSize: 11 }}
+                />
+                <YAxis
+                  axisLine={false}
+                  tickLine={false}
+                  tickFormatter={formatPassengers}
+                  tick={{ fill: "#667085", fontSize: 11 }}
+                />
+                <Tooltip
+                  formatter={(value) => [
+                    Number(value).toLocaleString("es-GT"),
+                    "Pasajeros",
+                  ]}
+                  contentStyle={{
+                    borderRadius: "8px",
+                    border: "1px solid #d0d5dd",
+                    boxShadow: "0 10px 24px rgb(16 24 40 / 14%)",
+                  }}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="passengers"
+                  stroke="#2563eb"
+                  strokeWidth={2.5}
+                  fill="#2563eb"
+                  fillOpacity={0.1}
+                  isAnimationActive={false}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+
+          <figcaption id="passenger-summary">
+            En la serie de siete días, el pico registrado es {passengerPeak.day},{" "}
+            {formatPassengers(passengerPeak.passengers)}. Mínimo registrado:{" "}
+            {passengerMinimum.day},{" "}
+            {formatPassengers(passengerMinimum.passengers)}.
+          </figcaption>
+
+          <div className="dashboard-sr-only">
+            <table>
+              <caption>Valores diarios del flujo estimado de pasajeros</caption>
+              <thead>
+                <tr>
+                  <th>Día</th>
+                  <th>Pasajeros estimados</th>
+                </tr>
+              </thead>
+              <tbody>
+                {passengerFlow.map((point) => (
+                  <tr key={point.day}>
+                    <td>{point.day}</td>
+                    <td>{point.passengers.toLocaleString("es-GT")}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </figure>
       </section>
     </div>
   );
