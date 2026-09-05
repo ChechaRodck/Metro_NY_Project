@@ -8,6 +8,7 @@
 
   --color-primary: #2563eb;
   --color-primary-dark: #1d4ed8;
+  --color-console-stage: #070d18;
   --color-sidebar: #101828;
   --color-sidebar-hover: #1d2939;
   --color-background: #f4f7fb;
@@ -19,6 +20,8 @@
   --color-warning: #f79009;
   --color-danger: #f04438;
   --motion-duration-fast: 140ms;
+  --motion-duration-standard: 180ms;
+  --motion-duration-panel: 220ms;
   --motion-ease-dispatch: cubic-bezier(0.16, 1, 0.3, 1);
 }
 

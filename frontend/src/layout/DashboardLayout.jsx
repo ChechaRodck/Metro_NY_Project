@@ -12,6 +12,8 @@ import {
   CreditCard,
   LayoutDashboard,
   Menu,
+  PanelLeftClose,
+  PanelLeftOpen,
   Route,
   Search,
   TrainFront,
@@ -145,6 +147,12 @@ function DashboardLayout() {
   const sidebarHidden = isMobileSidebar
     ? !sidebarOpen
     : sidebarCollapsed;
+  const activeNavigationIndex = navigation.findIndex((item) =>
+    item.end
+      ? location.pathname === item.to
+      : location.pathname === item.to ||
+        location.pathname.startsWith(`${item.to}/`),
+  );
 
   const searchResults = useMemo(() => {
     const normalizedQuery = normalizeText(searchQuery);
@@ -176,18 +184,33 @@ function DashboardLayout() {
       );
       const focusWasOnMobileClose =
         document.activeElement === sidebarCloseRef.current;
+      const focusWasOnMobileMenu =
+        document.activeElement === mobileMenuButtonRef.current;
+      const focusWasOnDesktopCollapse =
+        document.activeElement === desktopCollapseButtonRef.current;
+      const mobileDrawerWasOpen = sidebarOpen;
 
       setIsMobileSidebar(event.matches);
       setSidebarOpen(false);
 
-      if (!focusWasInsideSidebar) {
+      if (
+        !focusWasInsideSidebar &&
+        !focusWasOnMobileMenu &&
+        !focusWasOnDesktopCollapse &&
+        !(mobileDrawerWasOpen && !event.matches)
+      ) {
         return;
       }
 
       window.requestAnimationFrame(() => {
         if (event.matches) {
           mobileMenuButtonRef.current?.focus();
-        } else if (sidebarCollapsed || focusWasOnMobileClose) {
+        } else if (
+          sidebarCollapsed ||
+          focusWasOnMobileClose ||
+          focusWasOnMobileMenu ||
+          mobileDrawerWasOpen
+        ) {
           desktopCollapseButtonRef.current?.focus();
         }
       });
@@ -198,7 +221,7 @@ function DashboardLayout() {
     return () => {
       mediaQuery.removeEventListener("change", handleSidebarContextChange);
     };
-  }, [sidebarCollapsed]);
+  }, [sidebarCollapsed, sidebarOpen]);
 
   useEffect(() => {
     if (!mobileDrawerActive) {
@@ -359,6 +382,33 @@ function DashboardLayout() {
         tabIndex={-1}
         onKeyDown={handleSidebarKeyDown}
       >
+        <svg
+          className="sidebar__network"
+          viewBox="0 0 252 760"
+          preserveAspectRatio="none"
+          aria-hidden="true"
+          focusable="false"
+        >
+          <g className="sidebar__network-routes">
+            <path d="M32 -18V112H92V196H54V304H178V390H122V498H220V624H166V778" />
+            <path d="M220 74H164V156H202V268H126V350H72V474H30V578H96V704" />
+            <path d="M92 196H164V156M178 390H202V268M122 498H72V474M96 704H166V624" />
+          </g>
+
+          <g className="sidebar__network-nodes">
+            <circle cx="32" cy="112" r="3" />
+            <circle cx="92" cy="196" r="4" />
+            <circle cx="54" cy="304" r="3" />
+            <circle cx="178" cy="390" r="4" />
+            <circle cx="122" cy="498" r="3" />
+            <circle cx="220" cy="624" r="4" />
+            <circle cx="164" cy="156" r="3" />
+            <circle cx="202" cy="268" r="3" />
+            <circle cx="72" cy="474" r="4" />
+            <circle cx="96" cy="704" r="3" />
+          </g>
+        </svg>
+
         <div className="sidebar__header">
           <div className="brand">
             <div className="brand__icon">M</div>
@@ -382,7 +432,20 @@ function DashboardLayout() {
 
         <div className="sidebar__section-label">ADMINISTRACIÓN</div>
 
-        <nav className="sidebar__navigation">
+        <nav
+          className="sidebar__navigation"
+          style={
+            activeNavigationIndex >= 0
+              ? {
+                  "--active-route-offset": `${activeNavigationIndex * 50}px`,
+                }
+              : undefined
+          }
+        >
+          {activeNavigationIndex >= 0 && (
+            <span className="sidebar__active-route" aria-hidden="true" />
+          )}
+
           {navigation.map((item) => {
             const Icon = item.icon;
 
@@ -444,7 +507,11 @@ function DashboardLayout() {
                 setSidebarCollapsed((valorActual) => !valorActual)
               }
             >
-              {sidebarCollapsed ? "»" : "«"}
+              {sidebarCollapsed ? (
+                <PanelLeftOpen size={20} aria-hidden="true" />
+              ) : (
+                <PanelLeftClose size={20} aria-hidden="true" />
+              )}
             </button>
             <button
               type="button"
