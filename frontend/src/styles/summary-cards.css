@@ -1,0 +1,133 @@
+:root {
+  --summary-card-height: 112px;
+}
+
+/* La misma cuadrícula para los indicadores de todos los módulos */
+.stats-grid,
+.network-summary,
+.operations-summary,
+.fleet-summary,
+.personnel-summary,
+.passengers-summary,
+.maintenance-summary,
+.incident-summary,
+.reports-summary {
+  gap: 18px;
+  margin-bottom: 24px;
+  align-items: stretch;
+}
+
+/* La misma caja: altura, relleno, borde, radio y sombra */
+.stat-card,
+.network-summary > article,
+.operations-summary > article,
+.fleet-summary > article,
+.personnel-summary > article,
+.passengers-summary > article,
+.maintenance-summary > article,
+.incident-summary > article,
+.reports-summary > article {
+  display: flex;
+  align-items: center !important;
+  gap: 16px !important;
+  width: 100%;
+  height: var(--summary-card-height) !important;
+  min-height: var(--summary-card-height) !important;
+  max-height: var(--summary-card-height) !important;
+  padding: 20px !important;
+  overflow: hidden;
+  background: #ffffff;
+  border: 1px solid var(--color-border, #e4e7ec) !important;
+  border-radius: 13px !important;
+  box-shadow: 0 3px 12px rgb(16 24 40 / 3%);
+}
+
+/* Evita que el texto obligue a una tarjeta a crecer */
+.stat-card__content,
+.network-summary > article > div,
+.operations-summary > article > div,
+.fleet-summary > article > div,
+.personnel-summary > article > div:last-child,
+.passengers-summary > article > div,
+.maintenance-summary > article > div,
+.incident-summary > article > div,
+.reports-summary > article > div {
+  min-width: 0;
+}
+
+/* El mismo tamaño de icono en módulos que usan el SVG directamente */
+.network-summary > article > svg,
+.operations-summary > article > svg,
+.fleet-summary > article > svg,
+.passengers-summary > article > svg,
+.maintenance-summary > article > svg,
+.incident-summary > article > svg,
+.reports-summary > article > svg {
+  flex-shrink: 0;
+  width: 22px !important;
+  height: 22px !important;
+  margin: 0 !important;
+  padding: 11px !important;
+  box-sizing: content-box !important;
+  color: currentColor;
+  background: color-mix(in srgb, currentColor 10%, #ffffff) !important;
+  border-radius: 11px !important;
+}
+
+/* El mismo contenedor para los iconos de Resumen y Personal */
+.stat-card__icon,
+.personnel-summary-icon {
+  flex-shrink: 0;
+  width: 44px !important;
+  height: 44px !important;
+  border-radius: 11px !important;
+}
+
+/* Valores con la misma escala visual */
+.stat-card__value-row strong,
+.network-summary strong,
+.operations-summary strong,
+.fleet-summary strong,
+.personnel-summary strong,
+.passengers-summary strong,
+.maintenance-summary strong,
+.incident-summary strong,
+.reports-summary strong {
+  font-size: 24px !important;
+  line-height: 1.1 !important;
+  white-space: nowrap;
+}
+
+/* Los textos largos no cambian la altura de la caja */
+.stat-card__label,
+.stat-card__detail,
+.network-summary span,
+.operations-summary span,
+.fleet-summary span,
+.personnel-summary article > div:last-child > span,
+.passengers-summary span,
+.maintenance-summary span,
+.incident-summary span,
+.reports-summary article div > span,
+.reports-summary small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* En teléfonos permitimos que crezcan para no cortar el contenido */
+@media (max-width: 720px) {
+  .stat-card,
+  .network-summary > article,
+  .operations-summary > article,
+  .fleet-summary > article,
+  .personnel-summary > article,
+  .passengers-summary > article,
+  .maintenance-summary > article,
+  .incident-summary > article,
+  .reports-summary > article {
+    height: auto !important;
+    min-height: var(--summary-card-height) !important;
+    max-height: none !important;
+  }
+}
