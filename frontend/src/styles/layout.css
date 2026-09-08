@@ -874,7 +874,6 @@ body:has(.app-shell) {
 
 .page-content:has(
     > :where(
-        .personnel-page,
         .passengers-page,
         .maintenance-page,
         .incident-page,
