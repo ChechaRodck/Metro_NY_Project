@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { X } from "lucide-react";
 
 function getCurrentDate() {
@@ -259,6 +259,8 @@ function FleetFormModal({
   onSubmit,
 }) {
   const configuration = configurations[type];
+  const dialogRef = useRef(null);
+  const initialFocusRef = useRef(null);
 
   const [formValues, setFormValues] = useState(() =>
     createInitialValues(
@@ -269,20 +271,111 @@ function FleetFormModal({
   );
 
   useEffect(() => {
+    const previouslyFocusedElement = document.activeElement;
+    const page = document.querySelector(".fleet-page");
+    const shellBackgroundElements = Array.from(
+      document.querySelectorAll(".app-shell > .sidebar, .main-area > .topbar"),
+    );
+    const pageBackgroundElements = page
+      ? Array.from(page.children).filter(
+          (element) => !element.classList.contains("fleet-modal-backdrop"),
+        )
+      : [];
+    const backgroundElements = [
+      ...shellBackgroundElements,
+      ...pageBackgroundElements,
+    ];
+    const backgroundState = backgroundElements.map((element) => ({
+      element,
+      hadInert: element.hasAttribute("inert"),
+      ariaHidden: element.getAttribute("aria-hidden"),
+    }));
+    const focusableSelector = [
+      "a[href]",
+      "button:not([disabled])",
+      "input:not([disabled])",
+      "select:not([disabled])",
+      "textarea:not([disabled])",
+      '[tabindex]:not([tabindex="-1"])',
+    ].join(",");
+
     function handleKeyDown(event) {
       if (event.key === "Escape") {
+        event.preventDefault();
         onClose();
+        return;
+      }
+
+      if (event.key !== "Tab") {
+        return;
+      }
+
+      const dialog = dialogRef.current;
+
+      if (!dialog) {
+        return;
+      }
+
+      const focusableElements = Array.from(
+        dialog.querySelectorAll(focusableSelector),
+      ).filter((element) => !element.hidden && element.offsetParent !== null);
+
+      if (focusableElements.length === 0) {
+        event.preventDefault();
+        dialog.focus();
+        return;
+      }
+
+      const firstElement = focusableElements[0];
+      const lastElement = focusableElements[focusableElements.length - 1];
+
+      if (!dialog.contains(document.activeElement)) {
+        event.preventDefault();
+        (event.shiftKey ? lastElement : firstElement).focus();
+      } else if (event.shiftKey && document.activeElement === firstElement) {
+        event.preventDefault();
+        lastElement.focus();
+      } else if (!event.shiftKey && document.activeElement === lastElement) {
+        event.preventDefault();
+        firstElement.focus();
       }
     }
 
     const previousOverflow = document.body.style.overflow;
 
     document.body.style.overflow = "hidden";
+    backgroundElements.forEach((element) => {
+      element.inert = true;
+      element.setAttribute("aria-hidden", "true");
+    });
     document.addEventListener("keydown", handleKeyDown);
+    const focusFrame = requestAnimationFrame(() => {
+      (initialFocusRef.current ?? dialogRef.current)?.focus();
+    });
 
     return () => {
+      cancelAnimationFrame(focusFrame);
       document.body.style.overflow = previousOverflow;
       document.removeEventListener("keydown", handleKeyDown);
+      backgroundState.forEach(({ element, hadInert, ariaHidden }) => {
+        if (!hadInert) {
+          element.inert = false;
+          element.removeAttribute("inert");
+        }
+
+        if (ariaHidden === null) {
+          element.removeAttribute("aria-hidden");
+        } else {
+          element.setAttribute("aria-hidden", ariaHidden);
+        }
+      });
+
+      if (
+        previouslyFocusedElement instanceof HTMLElement &&
+        previouslyFocusedElement.isConnected
+      ) {
+        previouslyFocusedElement.focus();
+      }
     };
   }, [onClose]);
 
@@ -335,13 +428,14 @@ function FleetFormModal({
     onSubmit(newRecord);
   }
 
-  function renderField(field) {
+  function renderField(field, index) {
     const commonProperties = {
       id: `fleet-${field.name}`,
       name: field.name,
       value: formValues[field.name],
       required: field.required,
       onChange: handleChange,
+      ref: index === 0 ? initialFocusRef : undefined,
     };
 
     if (field.type === "select") {
@@ -412,6 +506,9 @@ function FleetFormModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="fleet-modal-title"
+        aria-describedby="fleet-modal-description"
+        ref={dialogRef}
+        tabIndex={-1}
       >
         <header className="fleet-modal__header">
           <div>
@@ -419,7 +516,7 @@ function FleetFormModal({
               {configuration.title}
             </h2>
 
-            <p>{configuration.description}</p>
+            <p id="fleet-modal-description">{configuration.description}</p>
           </div>
 
           <button
@@ -433,7 +530,7 @@ function FleetFormModal({
 
         <form onSubmit={handleSubmit}>
           <div className="fleet-form-grid">
-            {configuration.fields.map((field) => (
+            {configuration.fields.map((field, index) => (
               <label
                 className={
                   field.name === "name"
@@ -448,7 +545,7 @@ function FleetFormModal({
                   {field.required && <b aria-hidden="true"> *</b>}
                 </span>
 
-                {renderField(field)}
+                {renderField(field, index)}
               </label>
             ))}
           </div>
