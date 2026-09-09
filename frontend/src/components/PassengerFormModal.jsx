@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 
 function createInitialValues(fields) {
@@ -8,30 +9,18 @@ function createInitialValues(fields) {
   }, {});
 }
 
-function PassengerFormModal({
-  type,
-  availablePassengers,
-  availableCards,
+function getConfigurations(
+  passengerOptions,
+  cardOptions,
   cardTypes,
   paymentMethods,
   fareCategories,
-  onClose,
-  onSubmit,
-}) {
-  const passengerOptions = availablePassengers.map((passenger) => ({
-    value: passenger.id,
-    label: `${passenger.name} — ${passenger.id}`,
-  }));
-
-  const cardOptions = availableCards.map((card) => ({
-    value: card.id,
-    label: `•••• ${card.number.slice(-4)} — ${card.passenger}`,
-  }));
-
-  const configurations = {
+) {
+  return {
     passengers: {
       title: "Registrar pasajero",
-      description: "Ingresa los datos generales y de contacto del pasajero.",
+      description:
+        "Ingresa los datos administrativos para esta sesión de demostración.",
       fields: [
         {
           name: "name",
@@ -66,7 +55,7 @@ function PassengerFormModal({
         },
         {
           name: "status",
-          label: "Estado",
+          label: "Estado del pasajero",
           type: "select",
           defaultValue: "Activo",
           options: ["Activo", "Suspendido", "Inactivo"],
@@ -74,10 +63,10 @@ function PassengerFormModal({
         },
       ],
     },
-
     cards: {
       title: "Emitir tarjeta",
-      description: "Asigna una nueva tarjeta del metro a un pasajero.",
+      description:
+        "Asigna una tarjeta interna del metro durante esta sesión de demostración.",
       fields: [
         {
           name: "number",
@@ -103,7 +92,7 @@ function PassengerFormModal({
         },
         {
           name: "balance",
-          label: "Saldo inicial",
+          label: "Saldo inicial registrado",
           type: "number",
           defaultValue: "0",
           min: "0",
@@ -124,7 +113,7 @@ function PassengerFormModal({
         },
         {
           name: "status",
-          label: "Estado",
+          label: "Estado de la tarjeta",
           type: "select",
           defaultValue: "Activa",
           options: ["Activa", "Por vencer", "Bloqueada", "Vencida"],
@@ -132,14 +121,14 @@ function PassengerFormModal({
         },
       ],
     },
-
     recharges: {
       title: "Registrar recarga",
-      description: "Registra una nueva transacción para una tarjeta.",
+      description:
+        "Registra una transacción local sin modificar el saldo de ninguna tarjeta.",
       fields: [
         {
           name: "cardId",
-          label: "Tarjeta",
+          label: "Tarjeta de referencia",
           type: "select",
           defaultValue: cardOptions[0]?.value ?? "",
           options: cardOptions,
@@ -147,7 +136,7 @@ function PassengerFormModal({
         },
         {
           name: "amount",
-          label: "Monto de recarga",
+          label: "Monto registrado",
           type: "number",
           min: "0.01",
           step: "0.01",
@@ -167,7 +156,7 @@ function PassengerFormModal({
         },
         {
           name: "method",
-          label: "Método de pago",
+          label: "Método registrado",
           type: "select",
           defaultValue: paymentMethods[0] ?? "",
           options: paymentMethods,
@@ -181,7 +170,7 @@ function PassengerFormModal({
         },
         {
           name: "status",
-          label: "Estado",
+          label: "Estado de la recarga",
           type: "select",
           defaultValue: "Aprobada",
           options: ["Aprobada", "Pendiente", "Rechazada"],
@@ -189,10 +178,10 @@ function PassengerFormModal({
         },
       ],
     },
-
     fares: {
       title: "Registrar tarifa",
-      description: "Configura una nueva tarifa para el sistema.",
+      description:
+        "Agrega una definición tarifaria local para esta sesión de demostración.",
       fields: [
         {
           name: "name",
@@ -217,7 +206,7 @@ function PassengerFormModal({
         },
         {
           name: "price",
-          label: "Precio",
+          label: "Precio registrado",
           type: "number",
           min: "0",
           step: "0.01",
@@ -225,13 +214,13 @@ function PassengerFormModal({
         },
         {
           name: "validity",
-          label: "Vigencia",
+          label: "Vigencia registrada",
           placeholder: "Ejemplo: 7 días",
           required: true,
         },
         {
           name: "status",
-          label: "Estado",
+          label: "Estado de la tarifa",
           type: "select",
           defaultValue: "Activa",
           options: ["Activa", "Inactiva"],
@@ -240,49 +229,148 @@ function PassengerFormModal({
       ],
     },
   };
+}
 
-  const configuration = configurations[type];
-
+export default function PassengerFormModal({
+  type,
+  availablePassengers,
+  availableCards,
+  cardTypes,
+  paymentMethods,
+  fareCategories,
+  onClose,
+  onSubmit,
+}) {
+  const passengerOptions = availablePassengers.map((passenger) => ({
+    value: passenger.id,
+    label: `${passenger.id} · ${passenger.name}`,
+  }));
+  const cardOptions = availableCards.map((card) => ({
+    value: card.id,
+    label: `${card.id} · •••• ${String(card.number ?? "").replace(/\D/g, "").slice(-4)}`,
+  }));
+  const configurations = getConfigurations(
+    passengerOptions,
+    cardOptions,
+    cardTypes,
+    paymentMethods,
+    fareCategories,
+  );
+  const configuration = configurations[type] ?? configurations.passengers;
+  const dialogRef = useRef(null);
+  const backdropRef = useRef(null);
+  const initialFocusRef = useRef(null);
   const [formValues, setFormValues] = useState(() =>
     createInitialValues(configuration.fields),
   );
 
   useEffect(() => {
+    const previouslyFocusedElement = document.activeElement;
+    const backdrop = backdropRef.current;
+    const backgroundElements = Array.from(document.body.children).filter(
+      (element) =>
+        element instanceof HTMLElement &&
+        element !== backdrop &&
+        element.tagName !== "SCRIPT",
+    );
+    const backgroundState = backgroundElements.map((element) => ({
+      element,
+      hadInert: element.hasAttribute("inert"),
+      ariaHidden: element.getAttribute("aria-hidden"),
+    }));
+    const focusableSelector = [
+      "a[href]",
+      "button:not([disabled])",
+      "input:not([disabled])",
+      "select:not([disabled])",
+      "textarea:not([disabled])",
+      "summary",
+      '[tabindex]:not([tabindex="-1"])',
+    ].join(",");
+    const previousOverflow = document.body.style.overflow;
+
     function handleKeyDown(event) {
       if (event.key === "Escape") {
+        event.preventDefault();
         onClose();
+        return;
+      }
+
+      if (event.key !== "Tab") return;
+
+      const dialog = dialogRef.current;
+      if (!dialog) return;
+
+      const focusableElements = Array.from(
+        dialog.querySelectorAll(focusableSelector),
+      ).filter(
+        (element) => !element.hidden && element.getClientRects().length > 0,
+      );
+
+      if (focusableElements.length === 0) {
+        event.preventDefault();
+        dialog.focus();
+        return;
+      }
+
+      const firstElement = focusableElements[0];
+      const lastElement = focusableElements[focusableElements.length - 1];
+
+      if (!dialog.contains(document.activeElement)) {
+        event.preventDefault();
+        (event.shiftKey ? lastElement : firstElement).focus();
+      } else if (event.shiftKey && document.activeElement === firstElement) {
+        event.preventDefault();
+        lastElement.focus();
+      } else if (!event.shiftKey && document.activeElement === lastElement) {
+        event.preventDefault();
+        firstElement.focus();
       }
     }
 
-    const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+    backgroundElements.forEach((element) => {
+      element.inert = true;
+      element.setAttribute("aria-hidden", "true");
+    });
     document.addEventListener("keydown", handleKeyDown);
+    const focusFrame = requestAnimationFrame(() => {
+      (initialFocusRef.current ?? dialogRef.current)?.focus();
+    });
 
     return () => {
+      cancelAnimationFrame(focusFrame);
       document.body.style.overflow = previousOverflow;
       document.removeEventListener("keydown", handleKeyDown);
+
+      backgroundState.forEach(({ element, hadInert, ariaHidden }) => {
+        if (hadInert) element.setAttribute("inert", "");
+        else element.removeAttribute("inert");
+
+        if (ariaHidden === null) element.removeAttribute("aria-hidden");
+        else element.setAttribute("aria-hidden", ariaHidden);
+      });
+
+      if (
+        previouslyFocusedElement instanceof HTMLElement &&
+        previouslyFocusedElement.isConnected
+      ) {
+        previouslyFocusedElement.focus();
+      }
     };
   }, [onClose]);
 
   function handleChange(event) {
     const { name, value } = event.target;
-
-    setFormValues((currentValues) => ({
-      ...currentValues,
-      [name]: value,
-    }));
+    setFormValues((currentValues) => ({ ...currentValues, [name]: value }));
   }
 
   function handleSubmit(event) {
     event.preventDefault();
-
     let newRecord = { ...formValues };
 
     if (type === "passengers") {
-      newRecord = {
-        ...formValues,
-        trips: 0,
-      };
+      newRecord = { ...formValues, trips: 0 };
     }
 
     if (type === "cards") {
@@ -293,7 +381,7 @@ function PassengerFormModal({
       newRecord = {
         ...formValues,
         balance: Number(formValues.balance),
-        passenger: passenger?.name ?? "Pasajero",
+        passenger: passenger?.name ?? "Sin asociación registrada",
       };
     }
 
@@ -302,46 +390,45 @@ function PassengerFormModal({
         (card) => card.id === formValues.cardId,
       );
 
-      const { cardId, ...rechargeValues } = formValues;
-
       newRecord = {
-        ...rechargeValues,
         amount: Number(formValues.amount),
+        date: formValues.date,
+        time: formValues.time,
+        method: formValues.method,
+        reference: formValues.reference,
+        status: formValues.status,
         cardNumber: selectedCard
-          ? `•••• ${selectedCard.number.slice(-4)}`
-          : "Sin tarjeta",
-        passenger: selectedCard?.passenger ?? "Pasajero",
+          ? `•••• ${String(selectedCard.number ?? "").replace(/\D/g, "").slice(-4)}`
+          : "Sin asociación registrada",
+        passenger: selectedCard?.passenger ?? "Sin asociación registrada",
       };
     }
 
     if (type === "fares") {
-      newRecord = {
-        ...formValues,
-        price: Number(formValues.price),
-      };
+      newRecord = { ...formValues, price: Number(formValues.price) };
     }
 
     onSubmit(newRecord);
   }
 
-  function renderField(field) {
+  function renderField(field, index) {
+    const fieldId = `passenger-${type}-${field.name}`;
     const commonProperties = {
-      id: `passenger-${field.name}`,
+      id: fieldId,
       name: field.name,
       value: formValues[field.name],
       required: field.required,
       onChange: handleChange,
+      ref: index === 0 ? initialFocusRef : undefined,
     };
 
     if (field.type === "select") {
       return (
         <select {...commonProperties}>
+          <option value="">Seleccionar…</option>
           {field.options.map((option) => {
-            const value =
-              typeof option === "string" ? option : option.value;
-
-            const label =
-              typeof option === "string" ? option : option.label;
+            const value = typeof option === "string" ? option : option.value;
+            const label = typeof option === "string" ? option : option.label;
 
             return (
               <option value={value} key={value}>
@@ -374,13 +461,12 @@ function PassengerFormModal({
     );
   }
 
-  return (
+  return createPortal(
     <div
       className="passenger-modal-backdrop"
+      ref={backdropRef}
       onMouseDown={(event) => {
-        if (event.target === event.currentTarget) {
-          onClose();
-        }
+        if (event.target === event.currentTarget) onClose();
       }}
     >
       <section
@@ -388,28 +474,24 @@ function PassengerFormModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="passenger-modal-title"
+        aria-describedby="passenger-modal-description"
+        ref={dialogRef}
+        tabIndex={-1}
       >
         <header className="passenger-modal__header">
           <div>
-            <h2 id="passenger-modal-title">
-              {configuration.title}
-            </h2>
-
-            <p>{configuration.description}</p>
+            <h2 id="passenger-modal-title">{configuration.title}</h2>
+            <p id="passenger-modal-description">{configuration.description}</p>
           </div>
 
-          <button
-            type="button"
-            aria-label="Cerrar formulario"
-            onClick={onClose}
-          >
-            <X size={20} />
+          <button type="button" aria-label="Cerrar formulario" onClick={onClose}>
+            <X size={20} aria-hidden="true" />
           </button>
         </header>
 
         <form onSubmit={handleSubmit}>
           <div className="passenger-form-grid">
-            {configuration.fields.map((field) => (
+            {configuration.fields.map((field, index) => (
               <label
                 className={
                   field.type === "textarea"
@@ -417,38 +499,28 @@ function PassengerFormModal({
                     : "passenger-field"
                 }
                 key={field.name}
-                htmlFor={`passenger-${field.name}`}
+                htmlFor={`passenger-${type}-${field.name}`}
               >
                 <span>
                   {field.label}
                   {field.required && <b aria-hidden="true"> *</b>}
                 </span>
-
-                {renderField(field)}
+                {renderField(field, index)}
               </label>
             ))}
           </div>
 
           <footer className="passenger-modal__footer">
-            <button
-              type="button"
-              className="passenger-modal__cancel"
-              onClick={onClose}
-            >
+            <button type="button" className="passenger-modal__cancel" onClick={onClose}>
               Cancelar
             </button>
-
-            <button
-              type="submit"
-              className="passenger-modal__save"
-            >
+            <button type="submit" className="passenger-modal__save">
               Guardar registro
             </button>
           </footer>
         </form>
       </section>
-    </div>
+    </div>,
+    document.body,
   );
 }
-
-export default PassengerFormModal;
