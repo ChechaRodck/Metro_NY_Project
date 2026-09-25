@@ -1,0 +1,88 @@
+1. Ingreso OK. Transaccion 500000, cobrado 2,9, saldo 22,4
+
+2. Salida OK. Transaccion 500000
+
+3. Error esperado: ORA-20081: La tarjeta esta BLOQUEADA, no se puede usar
+
+4. Error esperado: ORA-20081: La tarjeta esta VENCIDA, no se puede usar
+
+5. Error esperado: ORA-20087: Saldo insuficiente. Saldo: 1.00, tarifa: 2.90
+
+6a. Primer ingreso OK, saldo 7,1
+6b. Error esperado: ORA-20085: La tarjeta ya tiene un viaje abierto
+
+7. Saldo antes: 1
+7. Recarga 100000 OK, saldo nuevo: 11
+
+8. Error esperado: ORA-20070: El monto de la recarga debe ser mayor a cero
+
+9. Boleto OK. Transaccion 500002, cobrado 2,9
+
+10. Pase mensual: cobrado 0 (debe ser 0), saldo 150
+
+11. Tarjeta emitida 4000000000001000 saldo 20 valida: S
+
+12. Error esperado: ORA-20076: La tarifa PE-EST es solo para pasajeros tipo ESTUDIANTE
+
+13. Error esperado: ORA-20150: El saldo de la tarjeta no puede quedar negativo
+ORA-06512: en "METRO_NY.TRG_TARJETA_SALDO", línea 3
+ORA-04088: error durante la ejecución del disparador 'METRO_NY.TRG_TARJETA_SALDO'
+
+14. Viaje programado #10000
+
+15. Error esperado: ORA-20051: El tren T-104 esta EN_MANTENIMIENTO y no se puede asignar
+
+16. Error esperado: ORA-20022: El conductor no tiene certificacion vigente para el modelo del tren T-101
+
+17. Error esperado: ORA-20052: El tren T-108 no esta disponible en ese horario (otro viaje, inspeccion vencida, mantenimiento pendiente o sin vagones)
+
+18. Error esperado: ORA-20023: El conductor ya tiene otro viaje en ese horario
+
+19. Viajes generados: 128
+
+20. Viaje 18 asignado a T-106 con el conductor 15
+
+21a. Viaje 16 iniciado. Estado del T-103: EN_OPERACION
+21b. Viaje 16 finalizado. Estado del T-103: DISPONIBLE, duracion real: 40 min, retraso: 0 min
+
+22. Error esperado: ORA-20038: La hora de llegada no puede ser antes de la hora de salida
+
+23a. Vagon R160-9002 movido del T-108 al T-103
+23b. Error esperado: ORA-20055: El vagon esta RETIRADO
+
+24. T-101 disponible: S | T-104 disponible: N | ruta 1 operativa: S
+
+25. Error esperado: ORA-20063: El empleado ya tiene un turno que se traslapa con ese horario
+
+26. Turno programado #1000
+
+27a. Ausencia #1000, turnos afectados: 1
+27b. Turno 13 sustituido por el empleado 9, turno nuevo #1001
+
+28. Certificaciones marcadas vencidas: 0, tarjetas: 0
+
+29a. Orden #1000 creada. Estado del elevador: EN_MANTENIMIENTO
+29b. Orden completada. Costo total: 4550. Estado del elevador: OPERATIVO
+29c. Error esperado: ORA-20095: La orden ya esta cerrada
+
+30. Error esperado: ORA-20099: No hay suficiente stock (disponible: 2)
+
+31a. Incidente #1000 registrado
+31b. Estacion 23 St cerrada, viajes cancelados: 131
+
+32. Error esperado: ORA-20084: La estacion no esta operativa, no se permiten ingresos
+
+33. Incidente cerrado, duro 5 min. Estado de 23 St: OPERATIVA
+
+34. Error esperado: ORA-20116: La fecha de fin no puede ser anterior a la de inicio
+
+35. Precio de VI-REG cambiado a 3.00
+
+36. Error esperado: ORA-20160: No se permite eliminar viajes de pasajeros (historial). Use estado ANULADO
+ORA-06512: en "METRO_NY.TRG_NO_BORRAR_VIAJE_PASAJERO", línea 2
+ORA-04088: error durante la ejecución del disparador 'METRO_NY.TRG_NO_BORRAR_VIAJE_PASAJERO'
+
+37. Error esperado: ORA-20154: Una estacion de transferencia debe estar asociada al menos a dos lineas
+ORA-06512: en "METRO_NY.TRG_ESTACION_TRANSFERENCIA", línea 9
+ORA-04088: error durante la ejecución del disparador 'METRO_NY.TRG_ESTACION_TRANSFERENCIA'
+
