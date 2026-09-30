@@ -874,7 +874,6 @@ body:has(.app-shell) {
 
 .page-content:has(
     > :where(
-        .incident-page,
         .reports-page
       )
   ) {
