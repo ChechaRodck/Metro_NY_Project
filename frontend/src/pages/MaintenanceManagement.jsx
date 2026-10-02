@@ -13,6 +13,13 @@ import {
   spareParts,
 } from "../data/maintenanceData";
 import MaintenanceFormModal from "../components/MaintenanceFormModal";
+import ConfirmDeleteModal from "../components/ConfirmDeleteModal";
+import DeleteRecordAction, {
+  DeleteRecordNotice,
+} from "../components/DeleteRecordAction";
+import useDeleteRecord, {
+  getSelectionAfterDelete,
+} from "../hooks/useDeleteRecord";
 import "../styles/maintenance.css";
 
 const tabs = [
@@ -24,18 +31,21 @@ const tabs = [
 const tabInformation = {
   orders: {
     action: "Nueva orden",
+    singular: "orden",
     registerTitle: "Registro de órdenes",
     registerDescription: "Selecciona una orden para revisar sus datos registrados.",
     searchPlaceholder: "Buscar por orden, trabajo, activo, ubicación o persona…",
   },
   equipment: {
     action: "Nuevo equipo",
+    singular: "equipo",
     registerTitle: "Registro de equipos",
     registerDescription: "Selecciona un equipo para consultar su ficha registrada.",
     searchPlaceholder: "Buscar por equipo, categoría, serie, fabricante o ubicación…",
   },
   parts: {
     action: "Nuevo repuesto",
+    singular: "repuesto",
     registerTitle: "Registro de repuestos",
     registerDescription: "Selecciona un repuesto para consultar sus existencias registradas.",
     searchPlaceholder: "Buscar por repuesto, categoría, ubicación o proveedor…",
@@ -942,7 +952,7 @@ function PartInspector({ record }) {
   );
 }
 
-function MaintenanceInspector({ type, record }) {
+function MaintenanceInspector({ type, record, onDelete }) {
   const inspectorId = "maintenance-inspector-" + type;
   const Icon =
     type === "orders"
@@ -972,6 +982,16 @@ function MaintenanceInspector({ type, record }) {
               <p>Ficha técnica registrada · Datos de demostración</p>
             </div>
           </header>
+
+          <div className="record-delete-toolbar">
+            <DeleteRecordAction
+              id={record.id}
+              label={`${tabInformation[type].singular} ${displayRecordedValue(title)}`}
+              record={record}
+              onRequest={onDelete}
+              variant="labeled"
+            />
+          </div>
 
           <div className="maintenance-inspector__body">
             {type === "orders" && <OrderInspector record={record} />}
@@ -1042,6 +1062,11 @@ function MaintenanceManagement() {
     ) ??
     orderedRecords[0] ??
     null;
+  const deletion = useDeleteRecord({
+    deleteRecord: handleDeleteRecord,
+    recordExists: ({ id }) =>
+      records[activeTab].some((record) => record.id === id),
+  });
 
   function handleTabChange(tabId) {
     setActiveTab(tabId);
@@ -1175,6 +1200,38 @@ function MaintenanceManagement() {
     setShowForm(false);
   }
 
+  function handleDeleteRecord({ id }) {
+    const nextSelection = getSelectionAfterDelete(
+      orderedRecords,
+      id,
+      selectedRecord?.id,
+    );
+
+    if (activeTab === "orders") {
+      setOrderRows((currentRows) =>
+        currentRows.filter((record) => record.id !== id),
+      );
+    } else if (activeTab === "equipment") {
+      setEquipmentRows((currentRows) =>
+        currentRows.filter((record) => record.id !== id),
+      );
+    } else {
+      setPartRows((currentRows) =>
+        currentRows.filter((record) => record.id !== id),
+      );
+    }
+
+    setSelectedIds((currentIds) => ({
+      ...currentIds,
+      [activeTab]: nextSelection,
+    }));
+    setSelectionAnnouncement(
+      nextSelection
+        ? `Registro ${nextSelection} seleccionado después de eliminar el registro.`
+        : "No quedan registros visibles para seleccionar.",
+    );
+  }
+
   return (
     <section
       className="maintenance-page"
@@ -1205,6 +1262,11 @@ function MaintenanceManagement() {
           {tabInformation[activeTab].action}
         </button>
       </header>
+
+      <DeleteRecordNotice
+        message={deletion.notice}
+        onDismiss={deletion.dismissNotice}
+      />
 
       {creationAnnouncement && (
         <div
@@ -1299,6 +1361,7 @@ function MaintenanceManagement() {
                   <MaintenanceInspector
                     type={activeTab}
                     record={selectedRecord}
+                    onDelete={deletion.requestDelete}
                   />
                 </div>
               </>
@@ -1321,6 +1384,17 @@ function MaintenanceManagement() {
           type={activeTab}
           onClose={() => setShowForm(false)}
           onSave={handleSave}
+        />
+      )}
+
+      {deletion.pendingDelete && (
+        <ConfirmDeleteModal
+          target={deletion.pendingDelete}
+          isDeleting={deletion.isDeleting}
+          error={deletion.error}
+          onCancel={deletion.cancelDelete}
+          onConfirm={deletion.confirmDelete}
+          restoreFocus={deletion.restoreFocus}
         />
       )}
     </section>

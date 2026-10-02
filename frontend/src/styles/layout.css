@@ -872,19 +872,6 @@ body:has(.app-shell) {
   overscroll-behavior: contain;
 }
 
-.page-content:has(
-    > :where(
-        .reports-page
-      )
-  ) {
-  --page-scroll-track: #edf2f7;
-  --page-scroll-thumb: #98a2b3;
-  --page-scroll-thumb-hover: #667085;
-
-  color: var(--color-text);
-  background: var(--auth-legacy-canvas);
-}
-
 .page-content::-webkit-scrollbar {
   width: 7px;
 }
