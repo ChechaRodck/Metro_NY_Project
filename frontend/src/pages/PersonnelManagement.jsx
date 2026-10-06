@@ -10,6 +10,13 @@ import {
   X,
 } from "lucide-react";
 import PersonnelFormModal from "../components/PersonnelFormModal";
+import ConfirmDeleteModal from "../components/ConfirmDeleteModal";
+import DeleteRecordAction, {
+  DeleteRecordNotice,
+} from "../components/DeleteRecordAction";
+import useDeleteRecord, {
+  getSelectionAfterDelete,
+} from "../hooks/useDeleteRecord";
 import {
   availableRoles,
   certifications,
@@ -507,22 +514,32 @@ function DetailItem({ label, children, wide = false }) {
   );
 }
 
-function InspectorHeader({ icon: Icon, title, description, status, type }) {
+function InspectorHeader({
+  icon: Icon,
+  title,
+  description,
+  status,
+  type,
+  children,
+}) {
   return (
-    <header className="personnel-inspector__header">
-      <span className="personnel-inspector__icon" aria-hidden="true">
-        <Icon size={23} strokeWidth={1.8} />
-      </span>
-      <div>
-        <h3 id={`personnel-inspector-title-${type}`}>{title}</h3>
-        <p>{description}</p>
-      </div>
-      <PersonnelStatus status={status} type={type} />
-    </header>
+    <>
+      <header className="personnel-inspector__header">
+        <span className="personnel-inspector__icon" aria-hidden="true">
+          <Icon size={23} strokeWidth={1.8} />
+        </span>
+        <div>
+          <h3 id={`personnel-inspector-title-${type}`}>{title}</h3>
+          <p>{description}</p>
+        </div>
+        <PersonnelStatus status={status} type={type} />
+      </header>
+      {children && <div className="record-delete-toolbar">{children}</div>}
+    </>
   );
 }
 
-function EmployeeInspector({ employee, personnelRecords }) {
+function EmployeeInspector({ employee, personnelRecords, deleteAction }) {
   const role = personnelRecords.roles.find((record) => record.name === employee.role);
   const relatedShifts = personnelRecords.shifts.filter(
     (record) => record.employeeId === employee.id,
@@ -539,7 +556,9 @@ function EmployeeInspector({ employee, personnelRecords }) {
         description={`${employee.id} · ${employee.role}`}
         status={employee.status}
         type="employees"
-      />
+      >
+        {deleteAction}
+      </InspectorHeader>
 
       <section className="personnel-inspector__section" aria-labelledby="employee-work-title">
         <h4 id="employee-work-title">Ficha laboral registrada</h4>
@@ -632,7 +651,7 @@ function EmployeeInspector({ employee, personnelRecords }) {
   );
 }
 
-function RoleInspector({ role, employeeRecords }) {
+function RoleInspector({ role, employeeRecords, deleteAction }) {
   const associatedEmployees = employeeRecords.filter(
     (employee) => employee.role === role.name,
   );
@@ -647,7 +666,9 @@ function RoleInspector({ role, employeeRecords }) {
         description={`${role.id} · Registro de puesto`}
         status={role.status}
         type="roles"
-      />
+      >
+        {deleteAction}
+      </InspectorHeader>
 
       <section className="personnel-inspector__section" aria-labelledby="role-details-title">
         <h4 id="role-details-title">Definición registrada</h4>
@@ -700,7 +721,7 @@ function RoleInspector({ role, employeeRecords }) {
   );
 }
 
-function ShiftInspector({ shift, employeeRecords }) {
+function ShiftInspector({ shift, employeeRecords, deleteAction }) {
   const employee = employeeRecords.find((record) => record.id === shift.employeeId);
 
   return (
@@ -711,7 +732,9 @@ function ShiftInspector({ shift, employeeRecords }) {
         description={`${shift.employee} · Turno registrado`}
         status={shift.attendance}
         type="shifts"
-      />
+      >
+        {deleteAction}
+      </InspectorHeader>
 
       <section className="personnel-inspector__section" aria-labelledby="shift-details-title">
         <h4 id="shift-details-title">Asignación registrada</h4>
@@ -746,7 +769,7 @@ function ShiftInspector({ shift, employeeRecords }) {
   );
 }
 
-function CertificationInspector({ certification, employeeRecords }) {
+function CertificationInspector({ certification, employeeRecords, deleteAction }) {
   const employee = employeeRecords.find(
     (record) => record.id === certification.employeeId,
   );
@@ -759,7 +782,9 @@ function CertificationInspector({ certification, employeeRecords }) {
         description={`${certification.id} · ${certification.employee}`}
         status={certification.status}
         type="certifications"
-      />
+      >
+        {deleteAction}
+      </InspectorHeader>
 
       <section
         className="personnel-inspector__section"
@@ -804,7 +829,17 @@ function CertificationInspector({ certification, employeeRecords }) {
   );
 }
 
-function PersonnelInspector({ type, record, personnelRecords }) {
+function PersonnelInspector({ type, record, personnelRecords, onDelete }) {
+  const deleteAction = record ? (
+    <DeleteRecordAction
+      id={record.id}
+      label={`${tabInformation[type].singular} ${getRecordTitle(record, type)}`}
+      record={record}
+      onRequest={onDelete}
+      variant="labeled"
+    />
+  ) : null;
+
   return (
     <section
       className="personnel-inspector"
@@ -814,18 +849,31 @@ function PersonnelInspector({ type, record, personnelRecords }) {
       {record ? (
         <>
           {type === "employees" && (
-            <EmployeeInspector employee={record} personnelRecords={personnelRecords} />
+            <EmployeeInspector
+              employee={record}
+              personnelRecords={personnelRecords}
+              deleteAction={deleteAction}
+            />
           )}
           {type === "roles" && (
-            <RoleInspector role={record} employeeRecords={personnelRecords.employees} />
+            <RoleInspector
+              role={record}
+              employeeRecords={personnelRecords.employees}
+              deleteAction={deleteAction}
+            />
           )}
           {type === "shifts" && (
-            <ShiftInspector shift={record} employeeRecords={personnelRecords.employees} />
+            <ShiftInspector
+              shift={record}
+              employeeRecords={personnelRecords.employees}
+              deleteAction={deleteAction}
+            />
           )}
           {type === "certifications" && (
             <CertificationInspector
               certification={record}
               employeeRecords={personnelRecords.employees}
+              deleteAction={deleteAction}
             />
           )}
         </>
@@ -882,6 +930,11 @@ export default function PersonnelManagement() {
   const selectedRecord = filteredRecords.find(
     (record) => record.id === selectedIds[activeTab],
   );
+  const deletion = useDeleteRecord({
+    deleteRecord: handleDeleteRecord,
+    recordExists: ({ id }) =>
+      personnelRecords[activeTab].some((record) => record.id === id),
+  });
 
   function updateActiveFilters(nextValues) {
     const nextFilters = { ...activeFilters, ...nextValues };
@@ -998,6 +1051,30 @@ export default function PersonnelManagement() {
     setIsModalOpen(false);
   }
 
+  function handleDeleteRecord({ id }) {
+    const nextSelection = getSelectionAfterDelete(
+      filteredRecords,
+      id,
+      selectedRecord?.id,
+    );
+
+    setPersonnelRecords((currentRecords) => ({
+      ...currentRecords,
+      [activeTab]: currentRecords[activeTab].filter(
+        (record) => record.id !== id,
+      ),
+    }));
+    setSelectedIds((currentIds) => ({
+      ...currentIds,
+      [activeTab]: nextSelection,
+    }));
+    setSelectionAnnouncement(
+      nextSelection
+        ? `${tabInformation[activeTab].singular} ${nextSelection} seleccionado después de eliminar el registro.`
+        : "No quedan registros visibles para seleccionar.",
+    );
+  }
+
   return (
     <section className="personnel-page" aria-labelledby="personnel-page-title">
       <header className="personnel-heading">
@@ -1021,6 +1098,11 @@ export default function PersonnelManagement() {
           {tabInformation[activeTab].action}
         </button>
       </header>
+
+      <DeleteRecordNotice
+        message={deletion.notice}
+        onDismiss={deletion.dismissNotice}
+      />
 
       {announcement && (
         <div
@@ -1110,6 +1192,7 @@ export default function PersonnelManagement() {
                   type={activeTab}
                   record={selectedRecord}
                   personnelRecords={personnelRecords}
+                  onDelete={deletion.requestDelete}
                 />
               </div>
             )}
@@ -1133,6 +1216,17 @@ export default function PersonnelManagement() {
           availableRoles={availableRoles}
           onClose={() => setIsModalOpen(false)}
           onSubmit={handleCreate}
+        />
+      )}
+
+      {deletion.pendingDelete && (
+        <ConfirmDeleteModal
+          target={deletion.pendingDelete}
+          isDeleting={deletion.isDeleting}
+          error={deletion.error}
+          onCancel={deletion.cancelDelete}
+          onConfirm={deletion.confirmDelete}
+          restoreFocus={deletion.restoreFocus}
         />
       )}
     </section>

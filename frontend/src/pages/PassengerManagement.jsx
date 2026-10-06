@@ -10,6 +10,13 @@ import {
   X,
 } from "lucide-react";
 import PassengerFormModal from "../components/PassengerFormModal";
+import ConfirmDeleteModal from "../components/ConfirmDeleteModal";
+import DeleteRecordAction, {
+  DeleteRecordNotice,
+} from "../components/DeleteRecordAction";
+import useDeleteRecord, {
+  getSelectionAfterDelete,
+} from "../hooks/useDeleteRecord";
 import {
   availableCardTypes,
   availableFareCategories,
@@ -539,22 +546,32 @@ function DetailItem({ label, children, wide = false }) {
   );
 }
 
-function InspectorHeader({ icon: Icon, title, description, type, status }) {
+function InspectorHeader({
+  icon: Icon,
+  title,
+  description,
+  type,
+  status,
+  children,
+}) {
   return (
-    <header className="passenger-inspector__header">
-      <span className="passenger-inspector__icon" aria-hidden="true">
-        <Icon size={23} strokeWidth={1.8} />
-      </span>
-      <div>
-        <h3 id={`passenger-inspector-title-${type}`}>{title}</h3>
-        <p>{description}</p>
-      </div>
-      <LedgerStatus type={type} status={status} />
-    </header>
+    <>
+      <header className="passenger-inspector__header">
+        <span className="passenger-inspector__icon" aria-hidden="true">
+          <Icon size={23} strokeWidth={1.8} />
+        </span>
+        <div>
+          <h3 id={`passenger-inspector-title-${type}`}>{title}</h3>
+          <p>{description}</p>
+        </div>
+        <LedgerStatus type={type} status={status} />
+      </header>
+      {children && <div className="record-delete-toolbar">{children}</div>}
+    </>
   );
 }
 
-function PassengerInspector({ passenger, records }) {
+function PassengerInspector({ passenger, records, deleteAction }) {
   const associatedCards = records.cards.filter(
     (card) => card.passengerId === passenger.id,
   );
@@ -567,7 +584,9 @@ function PassengerInspector({ passenger, records }) {
         description={`${passenger.id} · Registro de pasajero`}
         type="passengers"
         status={passenger.status}
-      />
+      >
+        {deleteAction}
+      </InspectorHeader>
 
       <section className="passenger-inspector__section" aria-labelledby="passenger-record-details-title">
         <h4 id="passenger-record-details-title">Condición registrada</h4>
@@ -623,7 +642,7 @@ function PassengerInspector({ passenger, records }) {
   );
 }
 
-function CardInspector({ card, records }) {
+function CardInspector({ card, records, deleteAction }) {
   const passenger = records.passengers.find(
     (record) => record.id === card.passengerId,
   );
@@ -636,7 +655,9 @@ function CardInspector({ card, records }) {
         description={`${maskCardNumber(card.number)} · Tarjeta interna del metro`}
         type="cards"
         status={card.status}
-      />
+      >
+        {deleteAction}
+      </InspectorHeader>
 
       <section className="passenger-inspector__section" aria-labelledby="card-record-details-title">
         <h4 id="card-record-details-title">Ficha tarifaria registrada</h4>
@@ -665,7 +686,7 @@ function CardInspector({ card, records }) {
   );
 }
 
-function RechargeInspector({ recharge }) {
+function RechargeInspector({ recharge, deleteAction }) {
   return (
     <>
       <InspectorHeader
@@ -674,7 +695,9 @@ function RechargeInspector({ recharge }) {
         description={`${recharge.reference} · Recarga registrada`}
         type="recharges"
         status={recharge.status}
-      />
+      >
+        {deleteAction}
+      </InspectorHeader>
 
       <section className="passenger-inspector__section" aria-labelledby="recharge-record-details-title">
         <h4 id="recharge-record-details-title">Transacción registrada</h4>
@@ -700,7 +723,7 @@ function RechargeInspector({ recharge }) {
   );
 }
 
-function FareInspector({ fare }) {
+function FareInspector({ fare, deleteAction }) {
   return (
     <>
       <InspectorHeader
@@ -709,7 +732,9 @@ function FareInspector({ fare }) {
         description={`${fare.id} · Registro tarifario`}
         type="fares"
         status={fare.status}
-      />
+      >
+        {deleteAction}
+      </InspectorHeader>
 
       <section className="passenger-inspector__section" aria-labelledby="fare-record-details-title">
         <h4 id="fare-record-details-title">Definición registrada</h4>
@@ -730,7 +755,17 @@ function FareInspector({ fare }) {
   );
 }
 
-function LedgerInspector({ type, record, records }) {
+function LedgerInspector({ type, record, records, onDelete }) {
+  const deleteAction = record ? (
+    <DeleteRecordAction
+      id={record.id}
+      label={`${tabInformation[type].singular} ${getRegisterTitle(record, type)}`}
+      record={record}
+      onRequest={onDelete}
+      variant="labeled"
+    />
+  ) : null;
+
   return (
     <section
       className="passenger-inspector"
@@ -739,10 +774,26 @@ function LedgerInspector({ type, record, records }) {
     >
       {record ? (
         <>
-          {type === "passengers" && <PassengerInspector passenger={record} records={records} />}
-          {type === "cards" && <CardInspector card={record} records={records} />}
-          {type === "recharges" && <RechargeInspector recharge={record} />}
-          {type === "fares" && <FareInspector fare={record} />}
+          {type === "passengers" && (
+            <PassengerInspector
+              passenger={record}
+              records={records}
+              deleteAction={deleteAction}
+            />
+          )}
+          {type === "cards" && (
+            <CardInspector
+              card={record}
+              records={records}
+              deleteAction={deleteAction}
+            />
+          )}
+          {type === "recharges" && (
+            <RechargeInspector recharge={record} deleteAction={deleteAction} />
+          )}
+          {type === "fares" && (
+            <FareInspector fare={record} deleteAction={deleteAction} />
+          )}
         </>
       ) : (
         <div className="passenger-inspector__empty" role="status">
@@ -791,6 +842,11 @@ export default function PassengerManagement() {
     [activeFilters, activeRecords, activeTab, records],
   );
   const selectedRecord = filteredRecords.find((record) => record.id === selectedIds[activeTab]);
+  const deletion = useDeleteRecord({
+    deleteRecord: handleDeleteRecord,
+    recordExists: ({ id }) =>
+      records[activeTab].some((record) => record.id === id),
+  });
 
   function updateActiveFilters(nextValues) {
     const nextFilters = { ...activeFilters, ...nextValues };
@@ -874,6 +930,30 @@ export default function PassengerManagement() {
     setIsModalOpen(false);
   }
 
+  function handleDeleteRecord({ id }) {
+    const nextSelection = getSelectionAfterDelete(
+      filteredRecords,
+      id,
+      selectedRecord?.id,
+    );
+
+    setRecords((currentRecords) => ({
+      ...currentRecords,
+      [activeTab]: currentRecords[activeTab].filter(
+        (record) => record.id !== id,
+      ),
+    }));
+    setSelectedIds((currentIds) => ({
+      ...currentIds,
+      [activeTab]: nextSelection,
+    }));
+    setSelectionAnnouncement(
+      nextSelection
+        ? `${tabInformation[activeTab].singular} ${nextSelection} seleccionado después de eliminar el registro.`
+        : "No quedan registros visibles para seleccionar.",
+    );
+  }
+
   return (
     <section className="passengers-page" aria-labelledby="passengers-page-title">
       <header className="passengers-heading">
@@ -891,6 +971,11 @@ export default function PassengerManagement() {
           {tabInformation[activeTab].action}
         </button>
       </header>
+
+      <DeleteRecordNotice
+        message={deletion.notice}
+        onDismiss={deletion.dismissNotice}
+      />
 
       {announcement && (
         <div className="passengers-session-notice" role="status" aria-live="polite" aria-atomic="true">
@@ -949,7 +1034,12 @@ export default function PassengerManagement() {
                   onSelect={handleSelect}
                   onClear={() => updateActiveFilters({ search: "", status: "Todos" })}
                 />
-                <LedgerInspector type={activeTab} record={selectedRecord} records={records} />
+                <LedgerInspector
+                  type={activeTab}
+                  record={selectedRecord}
+                  records={records}
+                  onDelete={deletion.requestDelete}
+                />
               </div>
             )}
           </div>
@@ -970,6 +1060,17 @@ export default function PassengerManagement() {
           fareCategories={availableFareCategories}
           onClose={() => setIsModalOpen(false)}
           onSubmit={handleCreate}
+        />
+      )}
+
+      {deletion.pendingDelete && (
+        <ConfirmDeleteModal
+          target={deletion.pendingDelete}
+          isDeleting={deletion.isDeleting}
+          error={deletion.error}
+          onCancel={deletion.cancelDelete}
+          onConfirm={deletion.confirmDelete}
+          restoreFocus={deletion.restoreFocus}
         />
       )}
     </section>

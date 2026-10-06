@@ -12,6 +12,13 @@ import {
   Wrench,
 } from "lucide-react";
 import FleetFormModal from "../components/FleetFormModal";
+import ConfirmDeleteModal from "../components/ConfirmDeleteModal";
+import DeleteRecordAction, {
+  DeleteRecordNotice,
+} from "../components/DeleteRecordAction";
+import useDeleteRecord, {
+  getSelectionAfterDelete,
+} from "../hooks/useDeleteRecord";
 import { deposits, trains, wagons } from "../data/fleetData";
 import "../styles/fleet.css";
 
@@ -497,18 +504,21 @@ function TechnicalItem({ label, children, wide = false }) {
   );
 }
 
-function InspectorHeader({ title, description, status, icon: Icon }) {
+function InspectorHeader({ title, description, status, icon: Icon, children }) {
   return (
-    <header className="fleet-inspector__header">
-      <span className="fleet-inspector__icon" aria-hidden="true">
-        <Icon size={23} strokeWidth={1.8} />
-      </span>
-      <div>
-        <h3 id="fleet-inspector-title">{title}</h3>
-        <p>{description}</p>
-      </div>
-      <FleetStatus status={status} />
-    </header>
+    <>
+      <header className="fleet-inspector__header">
+        <span className="fleet-inspector__icon" aria-hidden="true">
+          <Icon size={23} strokeWidth={1.8} />
+        </span>
+        <div>
+          <h3 id="fleet-inspector-title">{title}</h3>
+          <p>{description}</p>
+        </div>
+        <FleetStatus status={status} />
+      </header>
+      {children && <div className="record-delete-toolbar">{children}</div>}
+    </>
   );
 }
 
@@ -569,7 +579,7 @@ function AssociatedWagons({ train, wagons: wagonRecords }) {
   );
 }
 
-function TrainInspector({ train, wagonRecords, depositRecords }) {
+function TrainInspector({ train, wagonRecords, depositRecords, deleteAction }) {
   const assignedDeposit = depositRecords.find(
     (deposit) => deposit.id === train.deposit,
   );
@@ -581,7 +591,9 @@ function TrainInspector({ train, wagonRecords, depositRecords }) {
         description={`${train.model} · ${train.manufacturer} · ${train.year}`}
         status={train.status}
         icon={TrainFront}
-      />
+      >
+        {deleteAction}
+      </InspectorHeader>
 
       <div className="fleet-inspector__section">
         <h4>Ficha técnica registrada</h4>
@@ -627,7 +639,7 @@ function TrainInspector({ train, wagonRecords, depositRecords }) {
   );
 }
 
-function WagonInspector({ wagon, trainRecords }) {
+function WagonInspector({ wagon, trainRecords, deleteAction }) {
   const assignedTrain = trainRecords.find((train) => train.id === wagon.train);
 
   return (
@@ -637,7 +649,9 @@ function WagonInspector({ wagon, trainRecords }) {
         description={`${wagon.type} · Fabricado en ${wagon.year}`}
         status={wagon.status}
         icon={TrainFront}
-      />
+      >
+        {deleteAction}
+      </InspectorHeader>
 
       <div className="fleet-inspector__section">
         <h4>Ficha técnica registrada</h4>
@@ -673,7 +687,7 @@ function WagonInspector({ wagon, trainRecords }) {
   );
 }
 
-function DepositInspector({ deposit, trainRecords }) {
+function DepositInspector({ deposit, trainRecords, deleteAction }) {
   const associatedTrains = trainRecords.filter(
     (train) => train.deposit === deposit.id,
   );
@@ -690,7 +704,9 @@ function DepositInspector({ deposit, trainRecords }) {
         description={`${deposit.id} · ${deposit.location}`}
         status={deposit.status}
         icon={Warehouse}
-      />
+      >
+        {deleteAction}
+      </InspectorHeader>
 
       <div className="fleet-inspector__section">
         <h4>Ficha técnica registrada</h4>
@@ -769,8 +785,17 @@ function DepositInspector({ deposit, trainRecords }) {
   );
 }
 
-function FleetInspector({ type, record, fleetRecords }) {
+function FleetInspector({ type, record, fleetRecords, onDelete }) {
   const inspectorId = `fleet-technical-inspector-${type}`;
+  const deleteAction = record ? (
+    <DeleteRecordAction
+      id={record.id}
+      label={`${recordLabels[type].singular} ${getRecordTitle(record, type)}`}
+      record={record}
+      onRequest={onDelete}
+      variant="labeled"
+    />
+  ) : null;
 
   return (
     <section
@@ -785,15 +810,21 @@ function FleetInspector({ type, record, fleetRecords }) {
               train={record}
               wagonRecords={fleetRecords.wagons}
               depositRecords={fleetRecords.deposits}
+              deleteAction={deleteAction}
             />
           )}
           {type === "wagons" && (
-            <WagonInspector wagon={record} trainRecords={fleetRecords.trains} />
+            <WagonInspector
+              wagon={record}
+              trainRecords={fleetRecords.trains}
+              deleteAction={deleteAction}
+            />
           )}
           {type === "deposits" && (
             <DepositInspector
               deposit={record}
               trainRecords={fleetRecords.trains}
+              deleteAction={deleteAction}
             />
           )}
         </>
@@ -845,6 +876,11 @@ function FleetManagement() {
   const selectedRecord = filteredRecords.find(
     (record) => record.id === selectedIds[activeTab],
   );
+  const deletion = useDeleteRecord({
+    deleteRecord: handleDeleteRecord,
+    recordExists: ({ id }) =>
+      fleetRecords[activeTab].some((record) => record.id === id),
+  });
 
   function updateActiveFilters(nextValues) {
     const nextFilters = { ...activeFilters, ...nextValues };
@@ -954,6 +990,30 @@ function FleetManagement() {
     setIsFormOpen(false);
   }
 
+  function handleDeleteRecord({ id }) {
+    const nextSelection = getSelectionAfterDelete(
+      filteredRecords,
+      id,
+      selectedRecord?.id,
+    );
+
+    setFleetRecords((currentRecords) => ({
+      ...currentRecords,
+      [activeTab]: currentRecords[activeTab].filter(
+        (record) => record.id !== id,
+      ),
+    }));
+    setSelectedIds((currentIds) => ({
+      ...currentIds,
+      [activeTab]: nextSelection,
+    }));
+    setSelectionAnnouncement(
+      nextSelection
+        ? `${recordLabels[activeTab].singular} ${nextSelection} seleccionado después de eliminar el registro.`
+        : `No quedan ${recordLabels[activeTab].plural} visibles para seleccionar.`,
+    );
+  }
+
   return (
     <section className="fleet-page" aria-labelledby="fleet-page-title">
       <header className="fleet-heading">
@@ -978,6 +1038,11 @@ function FleetManagement() {
           {actionLabels[activeTab]}
         </button>
       </header>
+
+      <DeleteRecordNotice
+        message={deletion.notice}
+        onDismiss={deletion.dismissNotice}
+      />
 
       <section className="fleet-yard" aria-label="Patio técnico de material rodante">
         <div
@@ -1044,6 +1109,7 @@ function FleetManagement() {
                   type={activeTab}
                   record={selectedRecord}
                   fleetRecords={fleetRecords}
+                  onDelete={deletion.requestDelete}
                 />
               </div>
             )}
@@ -1075,6 +1141,17 @@ function FleetManagement() {
           availableDeposits={fleetRecords.deposits}
           onClose={() => setIsFormOpen(false)}
           onSubmit={handleCreate}
+        />
+      )}
+
+      {deletion.pendingDelete && (
+        <ConfirmDeleteModal
+          target={deletion.pendingDelete}
+          isDeleting={deletion.isDeleting}
+          error={deletion.error}
+          onCancel={deletion.cancelDelete}
+          onConfirm={deletion.confirmDelete}
+          restoreFocus={deletion.restoreFocus}
         />
       )}
     </section>

@@ -11,6 +11,11 @@ import {
   UsersRound,
 } from "lucide-react";
 import OperationsFormModal from "../components/OperationsFormModal";
+import ConfirmDeleteModal from "../components/ConfirmDeleteModal";
+import DeleteRecordAction, {
+  DeleteRecordNotice,
+} from "../components/DeleteRecordAction";
+import useDeleteRecord from "../hooks/useDeleteRecord";
 import {
   operationSchedules,
   scheduledTrips,
@@ -216,7 +221,7 @@ function RecordedTime({ scheduled, actual }) {
   );
 }
 
-function TripsTable({ records }) {
+function TripsTable({ records, onDelete }) {
   return (
     <table className="operations-table operations-table--trips">
       <caption className="operations-sr-only">
@@ -232,6 +237,7 @@ function TripsTable({ records }) {
           <th scope="col">Llegada</th>
           <th scope="col">Conductor</th>
           <th scope="col">Estimación de pasajeros</th>
+          <th scope="col" className="record-delete-cell">Acciones</th>
         </tr>
       </thead>
 
@@ -276,6 +282,14 @@ function TripsTable({ records }) {
             <td className="operations-table__number">
               {trip.passengers.toLocaleString("es-GT")}
             </td>
+            <td className="record-delete-cell">
+              <DeleteRecordAction
+                id={trip.id}
+                label={`viaje ${trip.id}: ${trip.route}`}
+                record={trip}
+                onRequest={onDelete}
+              />
+            </td>
           </tr>
         ))}
       </tbody>
@@ -283,7 +297,7 @@ function TripsTable({ records }) {
   );
 }
 
-function SchedulesTable({ records }) {
+function SchedulesTable({ records, onDelete }) {
   return (
     <table className="operations-table operations-table--schedules">
       <caption className="operations-sr-only">
@@ -300,6 +314,7 @@ function SchedulesTable({ records }) {
           <th scope="col">Frecuencia</th>
           <th scope="col">Servicio</th>
           <th scope="col">Vigencia</th>
+          <th scope="col" className="record-delete-cell">Acciones</th>
         </tr>
       </thead>
 
@@ -341,6 +356,14 @@ function SchedulesTable({ records }) {
                 <strong>{schedule.startDate}</strong>
                 <small>hasta {schedule.endDate}</small>
               </span>
+            </td>
+            <td className="record-delete-cell">
+              <DeleteRecordAction
+                id={schedule.id}
+                label={`horario ${schedule.id}: ${schedule.route}`}
+                record={schedule}
+                onRequest={onDelete}
+              />
             </td>
           </tr>
         ))}
@@ -585,6 +608,11 @@ function OperationsManagement() {
   const activeRecords = operationRecords[activeTab];
   const hasActiveFilters =
     searchTerm.trim().length > 0 || statusFilter !== "Todos";
+  const deletion = useDeleteRecord({
+    deleteRecord: handleDeleteRecord,
+    recordExists: ({ id }) =>
+      operationRecords[activeTab].some((record) => record.id === id),
+  });
 
   function handleTabChange(tabId) {
     setActiveTab(tabId);
@@ -637,6 +665,15 @@ function OperationsManagement() {
     setIsFormOpen(false);
   }
 
+  function handleDeleteRecord({ id }) {
+    setOperationRecords((currentRecords) => ({
+      ...currentRecords,
+      [activeTab]: currentRecords[activeTab].filter(
+        (record) => record.id !== id,
+      ),
+    }));
+  }
+
   function clearFilters() {
     setSearchTerm("");
     setStatusFilter("Todos");
@@ -667,6 +704,11 @@ function OperationsManagement() {
           {actionLabels[activeTab]}
         </button>
       </header>
+
+      <DeleteRecordNotice
+        message={deletion.notice}
+        onDismiss={deletion.dismissNotice}
+      />
 
       <div className="operations-board">
         <OperationsIndex
@@ -760,9 +802,15 @@ function OperationsManagement() {
                       tabIndex={0}
                     >
                       {activeTab === "trips" ? (
-                        <TripsTable records={filteredRecords} />
+                        <TripsTable
+                          records={filteredRecords}
+                          onDelete={deletion.requestDelete}
+                        />
                       ) : (
-                        <SchedulesTable records={filteredRecords} />
+                        <SchedulesTable
+                          records={filteredRecords}
+                          onDelete={deletion.requestDelete}
+                        />
                       )}
                     </div>
                   ) : (
@@ -809,6 +857,17 @@ function OperationsManagement() {
           type={activeTab}
           onClose={() => setIsFormOpen(false)}
           onSubmit={handleCreate}
+        />
+      )}
+
+      {deletion.pendingDelete && (
+        <ConfirmDeleteModal
+          target={deletion.pendingDelete}
+          isDeleting={deletion.isDeleting}
+          error={deletion.error}
+          onCancel={deletion.cancelDelete}
+          onConfirm={deletion.confirmDelete}
+          restoreFocus={deletion.restoreFocus}
         />
       )}
     </section>

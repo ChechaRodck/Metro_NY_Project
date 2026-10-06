@@ -15,6 +15,13 @@ import {
   incidentStatuses,
 } from "../data/incidentsData";
 import IncidentFormModal from "../components/IncidentFormModal";
+import ConfirmDeleteModal from "../components/ConfirmDeleteModal";
+import DeleteRecordAction, {
+  DeleteRecordNotice,
+} from "../components/DeleteRecordAction";
+import useDeleteRecord, {
+  getSelectionAfterDelete,
+} from "../hooks/useDeleteRecord";
 import "../styles/incidents.css";
 
 const tabs = [
@@ -235,7 +242,7 @@ function DefinitionItem({ label, children, wide = false }) {
   );
 }
 
-function IncidentInspector({ incident }) {
+function IncidentInspector({ incident, onDelete }) {
   if (!incident) {
     return (
       <aside
@@ -268,6 +275,16 @@ function IncidentInspector({ incident }) {
           <p>{incident.description}</p>
         </div>
       </header>
+
+      <div className="record-delete-toolbar">
+        <DeleteRecordAction
+          id={incident.incidentNumber}
+          label={`incidente #${incident.incidentNumber}: ${incident.type}`}
+          record={incident}
+          onRequest={onDelete}
+          variant="labeled"
+        />
+      </div>
 
       <div className="incident-inspector__body">
         <section className="incident-inspector__section">
@@ -540,6 +557,11 @@ function IncidentManagement() {
     filters.status !== "Todos";
   const activeTabLabel =
     tabs.find((tab) => tab.id === activeTab)?.label ?? "Todos";
+  const deletion = useDeleteRecord({
+    deleteRecord: handleDeleteRecord,
+    recordExists: ({ id }) =>
+      incidentRows.some((incident) => incident.incidentNumber === id),
+  });
 
   function updateSelectionForVisibleRows(nextRows, tabId) {
     const currentSelection = selectedByTab[tabId];
@@ -665,6 +687,45 @@ function IncidentManagement() {
     setCreationAnnouncement(creationMessage);
   }
 
+  function handleDeleteRecord({ id }) {
+    const nextRows = incidentRows.filter(
+      (incident) => incident.incidentNumber !== id,
+    );
+    const nextActiveSelection = getSelectionAfterDelete(
+      visibleIncidents,
+      id,
+      selectedByTab[activeTab],
+      (incident) => incident.incidentNumber,
+    );
+
+    setIncidentRows(nextRows);
+    setSelectedByTab((currentSelections) =>
+      Object.fromEntries(
+        tabs.map((tab) => {
+          const visibleForTab = getVisibleIncidents(
+            incidentRows,
+            tab.id,
+            filters,
+          );
+          return [
+            tab.id,
+            getSelectionAfterDelete(
+              visibleForTab,
+              id,
+              currentSelections[tab.id],
+              (incident) => incident.incidentNumber,
+            ),
+          ];
+        }),
+      ),
+    );
+    setSelectionAnnouncement(
+      nextActiveSelection
+        ? `Incidente ${nextActiveSelection} seleccionado después de eliminar el registro.`
+        : "No quedan incidentes visibles para seleccionar.",
+    );
+  }
+
   return (
     <div className="incident-page">
       <header className="incident-heading">
@@ -692,6 +753,11 @@ function IncidentManagement() {
           Registrar incidente
         </button>
       </header>
+
+      <DeleteRecordNotice
+        message={deletion.notice}
+        onDismiss={deletion.dismissNotice}
+      />
 
       {notice && (
         <div className="incident-session-notice">
@@ -800,7 +866,10 @@ function IncidentManagement() {
               onClearFilters={handleClearFilters}
               tabId={activeTab}
             />
-            <IncidentInspector incident={selectedIncident} />
+            <IncidentInspector
+              incident={selectedIncident}
+              onDelete={deletion.requestDelete}
+            />
           </div>
         </div>
       </section>
@@ -812,6 +881,17 @@ function IncidentManagement() {
       <p className="incident-live-region" aria-live="polite" aria-atomic="true">{creationAnnouncement}</p>
 
       {showForm && <IncidentFormModal onClose={() => setShowForm(false)} onSave={handleSave} />}
+
+      {deletion.pendingDelete && (
+        <ConfirmDeleteModal
+          target={deletion.pendingDelete}
+          isDeleting={deletion.isDeleting}
+          error={deletion.error}
+          onCancel={deletion.cancelDelete}
+          onConfirm={deletion.confirmDelete}
+          restoreFocus={deletion.restoreFocus}
+        />
+      )}
     </div>
   );
 }

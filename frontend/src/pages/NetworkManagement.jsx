@@ -14,6 +14,13 @@ import {
   Wrench,
 } from "lucide-react";
 import NetworkFormModal from "../components/NetworkFormModal";
+import ConfirmDeleteModal from "../components/ConfirmDeleteModal";
+import DeleteRecordAction, {
+  DeleteRecordNotice,
+} from "../components/DeleteRecordAction";
+import useDeleteRecord, {
+  getSelectionAfterDelete,
+} from "../hooks/useDeleteRecord";
 import {
   metroLines,
   metroRoutes,
@@ -254,6 +261,11 @@ function NetworkManagement() {
   const routeAttentionCount = routes.filter(
     (route) => route.status !== "Activa",
   ).length;
+  const deletion = useDeleteRecord({
+    deleteRecord: handleDeleteRecord,
+    recordExists: ({ id }) =>
+      recordsByType[activeTab].some((record) => record.id === id),
+  });
 
   function handleTabChange(nextTab) {
     setActiveTab(nextTab);
@@ -302,6 +314,33 @@ function NetworkManagement() {
     setIsFormOpen(false);
   }
 
+  function handleDeleteRecord({ id }) {
+    if (activeTab === "lines") {
+      const selectedId = effectiveSelectedLine?.id ?? selectedLineId;
+      const nextSelection = getSelectionAfterDelete(
+        orderedRecords,
+        id,
+        selectedId,
+      );
+      setLines((currentLines) =>
+        currentLines.filter((line) => line.id !== id),
+      );
+      if (selectedId === id) setSelectedLineId(nextSelection ?? "");
+      return;
+    }
+
+    if (activeTab === "stations") {
+      setStations((currentStations) =>
+        currentStations.filter((station) => station.id !== id),
+      );
+      return;
+    }
+
+    setRoutes((currentRoutes) =>
+      currentRoutes.filter((route) => route.id !== id),
+    );
+  }
+
   function lineForId(lineId) {
     return lines.find((line) => line.id === lineId);
   }
@@ -330,6 +369,11 @@ function NetworkManagement() {
           {actionLabels[activeTab]}
         </button>
       </header>
+
+      <DeleteRecordNotice
+        message={deletion.notice}
+        onDismiss={deletion.dismissNotice}
+      />
 
       <div className="network-panel">
         <div className="network-tabs" role="tablist" aria-label="Registros de red">
@@ -419,8 +463,16 @@ function NetworkManagement() {
               ) : (
                 <div className="network-empty network-empty--compact">
                   <Search size={22} aria-hidden="true" />
-                  <strong>Sin líneas coincidentes</strong>
-                  <span>Ajusta la búsqueda o el filtro de estado.</span>
+                  <strong>
+                    {lines.length === 0
+                      ? "No hay líneas disponibles"
+                      : "Sin líneas coincidentes"}
+                  </strong>
+                  <span>
+                    {lines.length === 0
+                      ? "Los registros originales reaparecerán al recargar."
+                      : "Ajusta la búsqueda o el filtro de estado."}
+                  </span>
                 </div>
               )}
             </aside>
@@ -451,6 +503,16 @@ function NetworkManagement() {
                     </div>
                     <NetworkStatus status={effectiveSelectedLine.status} />
                   </header>
+
+                  <div className="record-delete-toolbar">
+                    <DeleteRecordAction
+                      id={effectiveSelectedLine.id}
+                      label={`Línea ${effectiveSelectedLine.id}: ${effectiveSelectedLine.name}`}
+                      record={effectiveSelectedLine}
+                      onRequest={deletion.requestDelete}
+                      variant="labeled"
+                    />
+                  </div>
 
                   <section className="network-terminal-section" aria-labelledby="terminal-section-title">
                     <div className="network-section-heading">
@@ -634,6 +696,7 @@ function NetworkManagement() {
                         <th scope="col">Accesos</th>
                         <th scope="col">Accesibilidad</th>
                         <th scope="col">Estado</th>
+                        <th scope="col" className="record-delete-cell">Acciones</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -677,6 +740,14 @@ function NetworkManagement() {
                             </span>
                           </td>
                           <td><NetworkStatus status={station.status} /></td>
+                          <td className="record-delete-cell">
+                            <DeleteRecordAction
+                              id={station.id}
+                              label={`estación ${station.name}`}
+                              record={station}
+                              onRequest={deletion.requestDelete}
+                            />
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -685,8 +756,16 @@ function NetworkManagement() {
               ) : (
                 <div className="network-empty">
                   <Search size={25} aria-hidden="true" />
-                  <strong>Sin estaciones coincidentes</strong>
-                  <span>Ajusta la búsqueda o el filtro de estado.</span>
+                  <strong>
+                    {stations.length === 0
+                      ? "No hay estaciones disponibles"
+                      : "Sin estaciones coincidentes"}
+                  </strong>
+                  <span>
+                    {stations.length === 0
+                      ? "Los registros originales reaparecerán al recargar."
+                      : "Ajusta la búsqueda o el filtro de estado."}
+                  </span>
                 </div>
               )}
             </>
@@ -732,6 +811,7 @@ function NetworkManagement() {
                         <th scope="col">Distancia</th>
                         <th scope="col">Duración</th>
                         <th scope="col">Estado</th>
+                        <th scope="col" className="record-delete-cell">Acciones</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -772,6 +852,14 @@ function NetworkManagement() {
                               </span>
                             </td>
                             <td><NetworkStatus status={route.status} /></td>
+                            <td className="record-delete-cell">
+                              <DeleteRecordAction
+                                id={route.id}
+                                label={`ruta ${route.id}: ${route.origin} a ${route.destination}`}
+                                record={route}
+                                onRequest={deletion.requestDelete}
+                              />
+                            </td>
                           </tr>
                         );
                       })}
@@ -781,8 +869,16 @@ function NetworkManagement() {
               ) : (
                 <div className="network-empty">
                   <Search size={25} aria-hidden="true" />
-                  <strong>Sin rutas coincidentes</strong>
-                  <span>Ajusta la búsqueda o el filtro de estado.</span>
+                  <strong>
+                    {routes.length === 0
+                      ? "No hay rutas disponibles"
+                      : "Sin rutas coincidentes"}
+                  </strong>
+                  <span>
+                    {routes.length === 0
+                      ? "Los registros originales reaparecerán al recargar."
+                      : "Ajusta la búsqueda o el filtro de estado."}
+                  </span>
                 </div>
               )}
             </>
@@ -796,6 +892,17 @@ function NetworkManagement() {
           availableLines={lines}
           onClose={() => setIsFormOpen(false)}
           onSubmit={handleCreateRecord}
+        />
+      )}
+
+      {deletion.pendingDelete && (
+        <ConfirmDeleteModal
+          target={deletion.pendingDelete}
+          isDeleting={deletion.isDeleting}
+          error={deletion.error}
+          onCancel={deletion.cancelDelete}
+          onConfirm={deletion.confirmDelete}
+          restoreFocus={deletion.restoreFocus}
         />
       )}
     </section>
