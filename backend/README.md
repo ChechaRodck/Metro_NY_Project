@@ -22,6 +22,14 @@ en el proceso que inicia Spring Boot o en la configuracion de ejecucion del IDE:
 | `DB_PASSWORD` | Si | Contrasena del esquema de aplicacion |
 | `CORS_ALLOWED_ORIGINS` | No | Origenes exactos separados por coma; por defecto `http://localhost:5173` solo para desarrollo |
 | `APP_TIMEZONE` | No | Zona de tareas programadas; por defecto `America/Guatemala` |
+| `JWT_SECRET` | Si | Secreto HS256 en Base64 con al menos 32 bytes aleatorios |
+| `JWT_ISSUER` | Si | Emisor exacto aceptado para los access tokens |
+| `JWT_AUDIENCE` | Si | Audiencia exacta de esta API |
+| `JWT_ACCESS_TOKEN_TTL` | No | Duracion ISO-8601 entre 5 y 30 minutos; por defecto `PT15M` |
+| `APP_AUTH_BOOTSTRAP_ENABLED` | No | `false` por defecto; habilita una unica alta inicial |
+| `APP_AUTH_BOOTSTRAP_USERNAME` | Solo bootstrap | Usuario normalizado de 3 a 60 caracteres |
+| `APP_AUTH_BOOTSTRAP_PASSWORD` | Solo bootstrap | Contrasena temporal de 16 a 128 caracteres |
+| `APP_AUTH_BOOTSTRAP_DISPLAY_NAME` | Solo bootstrap | Nombre visible del administrador inicial |
 
 Formatos de URL compatibles:
 
@@ -44,9 +52,20 @@ La lista CORS se recorta, descarta entradas vacias, elimina duplicados y rechaza
 el comodin `*`. CORS limita navegadores permitidos; no reemplaza autenticacion ni
 seguridad de produccion.
 
-La tarea diaria usa explicitamente `APP_TIMEZONE`. En esta fase las operaciones
-programadas usan `America/Guatemala`; JWT e instantes reales usaran UTC mas
-adelante. Oracle `DATE` y `SYSDATE` conservan por ahora su comportamiento actual.
+La tarea diaria usa explicitamente `APP_TIMEZONE`. Las operaciones programadas
+usan `America/Guatemala`; JWT y las marcas temporales de autenticacion usan UTC.
+Oracle `DATE` y `SYSDATE` de los modulos de negocio conservan su comportamiento.
+
+## Inicializacion segura del administrador
+
+El esquema instala cuatro roles, pero nunca usuarios ni contrasenas. En una base
+nueva, defina las cuatro variables `APP_AUTH_BOOTSTRAP_*`, habilite el bootstrap
+para un solo arranque y use una contrasena no reutilizada. La operacion se rehusa
+si ya existe cualquier usuario y nunca reemplaza al administrador existente.
+
+Inmediatamente despues del alta, quite `APP_AUTH_BOOTSTRAP_PASSWORD` del entorno,
+establezca `APP_AUTH_BOOTSTRAP_ENABLED=false` y reinicie el proceso. La contrasena
+no se registra ni se devuelve. Los archivos `.env` reales siguen prohibidos.
 
 ## Como correrlo
 
@@ -71,23 +90,27 @@ En la consola tiene que salir:
 Tomcat started on port 8080 (http)
 Started Main in 1.8 seconds
 ```
-Luego abrir `http://localhost:8080/api/lineas` en el navegador: debe salir un JSON con las lineas A, C, E, 1 y 2.
-La primera peticion es la que se conecta a Oracle (en la consola sale `HikariPool-1 - Start completed`).
+Luego abrir `http://localhost:8080/api/health`: debe responder `{"status":"UP"}`.
+El primer login o acceso protegido inicia la conexion a Oracle (en la consola
+sale `HikariPool-1 - Start completed`). Salud no expone ni consulta la base.
 
 Si la primera peticion no conecta, revise `DB_URL`, el listener y las credenciales
 inyectadas en el proceso; no edite `application.properties` con valores locales.
 
-## Probar la API
+## Autenticacion y prueba de la API
 
-Los GET se prueban directo en el navegador. Para los POST usar **Git Bash** (el curl de PowerShell no funciona igual)
-o Postman (*Body > raw > JSON*).
+Salvo salud e inicio de sesion, toda ruta requiere `Authorization: Bearer`. Los
+tokens HS256 son stateless, duran 15 minutos por defecto y no se guardan en cookie
+ni sesion. No hay refresh token ni revocacion de cierre de sesion. El estado,
+credenciales y roles actuales se verifican contra Oracle en cada token, por lo que
+sus cambios lo invalidan inmediatamente.
 
 ```bash
-# lectura basica
-curl -s http://localhost:8080/api/lineas
+# login (la contrasena se proporciona localmente y nunca se documenta)
+curl -s -X POST http://localhost:8080/api/auth/login -H "Content-Type: application/json" -d '{"username":"su.usuario","password":"<valor-local>"}'
 
-# regla de negocio controlada; cambie la fecha por una futura del ambiente demo
-curl -s -X POST http://localhost:8080/api/viajes -H "Content-Type: application/json" -d '{"idRuta":1,"salida":"2026-09-26T16:00:00","codigoTren":"T-104","idConductor":3}'
+# lectura autenticada
+curl -s http://localhost:8080/api/lineas -H "Authorization: Bearer <access-token>"
 ```
 
 Para probar accesos, tome un identificador numerico de tarjeta de los datos demo
@@ -95,6 +118,22 @@ locales sin copiarlo a capturas, tickets o documentacion. Las respuestas de erro
 nunca incluyen el numero Oracle ni el mensaje original del driver.
 
 Lo que se hace por la API **si se guarda** en la base. Para volver a los datos limpios ver el README de `database/scripts`.
+
+El limitador admite cinco fallos por usuario y veinte por direccion cliente
+directa en 15 minutos, con bloqueo de 15 minutos y `Retry-After`. Ignora
+`X-Forwarded-For`. Los contadores de usuario conocido tambien se guardan en
+Oracle; los contadores por direccion y usuario inexistente son locales a una
+instancia y no son coordinados entre nodos.
+
+CSRF esta deshabilitado porque la autenticacion usa exclusivamente Bearer en el
+encabezado y no cookies. Debe reevaluarse antes de introducir cookies de refresh.
+
+Las rutas administrativas, exclusivas de `ADMIN`, son `GET/POST
+/api/admin/usuarios`, `GET /api/admin/roles`, `PATCH
+/api/admin/usuarios/{username}/estado`, `PUT
+/api/admin/usuarios/{username}/roles` y `POST
+/api/admin/usuarios/{username}/password`. No existe eliminacion ni cambio de
+nombre de usuario, y ninguna respuesta serializa hashes.
 
 ## Problemas comunes
 | Lo que sale | Solucion |
@@ -106,6 +145,13 @@ Lo que se hace por la API **si se guarda** en la base. Para volver a los datos l
 | El listener no reconoce SID o servicio | Use el formato SID `:XE` o el formato de servicio `//host:puerto/servicio` que corresponda |
 | Oracle rechaza la sesion | Revise `DB_USERNAME` y `DB_PASSWORD` en el entorno, sin imprimir sus valores |
 | `Port 8080 was already in use` | Cambiar a `server.port=8081` |
+
+## Prueba de integracion Oracle
+
+El perfil Maven `oracle-it` valida los objetos instalados en una instancia
+desechable real; no usa H2. Defina `ORACLE_IT_URL`, `ORACLE_IT_USERNAME` y
+`ORACLE_IT_PASSWORD` para un esquema creado desde los scripts canonicos y ejecute
+`mvn -Poracle-it verify`. No use este perfil contra datos compartidos.
 
 ## Estructura
 ```
@@ -142,6 +188,9 @@ Todos los errores controlados usan la misma forma:
 - `404`: recurso inexistente reconocido.
 - `409`: duplicado, conflicto, eliminacion referenciada o transicion invalida reconocida.
 - `422`: validacion o regla de negocio reconocida.
+- `401`: autenticacion ausente, credenciales invalidas o token invalido.
+- `403`: rol insuficiente o ruta fuera de la politica cerrada.
+- `429`: limite de intentos de login, con `Retry-After` en segundos.
 - `500`: fallo no catalogado, con mensaje generico e identificador de correlacion.
 
 El catalogo solo traduce codigos Oracle y `RAISE_APPLICATION_ERROR` conocidos.

@@ -5,6 +5,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -14,8 +15,6 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import java.sql.SQLException;
-import java.time.Instant;
-import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -37,13 +36,13 @@ public class ManejadorErrores {
     private final OracleErrorCatalog oracleErrorCatalog = new OracleErrorCatalog();
 
     @ExceptionHandler(NoEncontradoException.class)
-    public ResponseEntity<ErrorResponse> noEncontrado(NoEncontradoException ignored) {
+    public ResponseEntity<ApiErrorResponse> noEncontrado(NoEncontradoException ignored) {
         return response(HttpStatus.NOT_FOUND, "RESOURCE_NOT_FOUND",
                 "No se encontro el recurso solicitado.", Map.of());
     }
 
     @ExceptionHandler(DataAccessException.class)
-    public ResponseEntity<ErrorResponse> errorBaseDatos(DataAccessException exception) {
+    public ResponseEntity<ApiErrorResponse> errorBaseDatos(DataAccessException exception) {
         String correlationId = newCorrelationId();
         SQLException sqlException = findSqlException(exception);
 
@@ -71,7 +70,7 @@ public class ManejadorErrores {
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ErrorResponse> validacion(MethodArgumentNotValidException exception) {
+    public ResponseEntity<ApiErrorResponse> validacion(MethodArgumentNotValidException exception) {
         Map<String, String> fieldErrors = exception.getBindingResult().getFieldErrors().stream()
                 .collect(Collectors.toMap(
                         error -> error.getField(),
@@ -84,37 +83,49 @@ public class ManejadorErrores {
     }
 
     @ExceptionHandler(ConstraintViolationException.class)
-    public ResponseEntity<ErrorResponse> restriccionValidacion(ConstraintViolationException ignored) {
+    public ResponseEntity<ApiErrorResponse> restriccionValidacion(ConstraintViolationException ignored) {
         return response(HttpStatus.UNPROCESSABLE_ENTITY, "VALIDATION_ERROR",
                 "Uno o mas valores no cumplen las reglas requeridas.", Map.of());
     }
 
     @ExceptionHandler({HttpMessageNotReadableException.class, MethodArgumentTypeMismatchException.class,
             MissingServletRequestParameterException.class, IllegalArgumentException.class})
-    public ResponseEntity<ErrorResponse> peticionMala(Exception ignored) {
+    public ResponseEntity<ApiErrorResponse> peticionMala(Exception ignored) {
         return response(HttpStatus.BAD_REQUEST, "MALFORMED_REQUEST",
                 "La solicitud no tiene un formato valido.", Map.of());
     }
 
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ErrorResponse> errorInesperado(Exception exception) {
+    public ResponseEntity<ApiErrorResponse> errorInesperado(Exception exception) {
         String correlationId = newCorrelationId();
         logUnexpected(exception, correlationId);
         return response(HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_ERROR",
                 GENERIC_SERVER_MESSAGE, Map.of(), correlationId);
     }
 
-    private ResponseEntity<ErrorResponse> response(HttpStatus status, String code, String message,
+    @ExceptionHandler(AuthenticationFailedException.class)
+    public ResponseEntity<ApiErrorResponse> autenticacionFallida(AuthenticationFailedException ignored) {
+        return response(HttpStatus.UNAUTHORIZED, "AUTHENTICATION_FAILED",
+                "Las credenciales proporcionadas no son validas.", Map.of());
+    }
+
+    @ExceptionHandler(LoginRateLimitedException.class)
+    public ResponseEntity<ApiErrorResponse> limiteInicioSesion(LoginRateLimitedException exception) {
+        ApiErrorResponse body = ApiErrorFactory.create(HttpStatus.TOO_MANY_REQUESTS,
+                "AUTH_RATE_LIMITED", "Demasiados intentos. Intente nuevamente mas tarde.", Map.of());
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .header(HttpHeaders.RETRY_AFTER, Long.toString(exception.getRetryAfterSeconds()))
+                .body(body);
+    }
+
+    private ResponseEntity<ApiErrorResponse> response(HttpStatus status, String code, String message,
                                                    Map<String, String> fieldErrors) {
         return response(status, code, message, fieldErrors, newCorrelationId());
     }
 
-    private ResponseEntity<ErrorResponse> response(HttpStatus status, String code, String message,
+    private ResponseEntity<ApiErrorResponse> response(HttpStatus status, String code, String message,
                                                    Map<String, String> fieldErrors, String correlationId) {
-        Map<String, String> safeFieldErrors = Collections.unmodifiableMap(new LinkedHashMap<>(fieldErrors));
-        ErrorResponse body = new ErrorResponse(
-                Instant.now(), status.value(), code, message, correlationId, safeFieldErrors
-        );
+        ApiErrorResponse body = ApiErrorFactory.create(status, code, message, fieldErrors, correlationId);
         return ResponseEntity.status(status).body(body);
     }
 
@@ -152,15 +163,5 @@ public class ManejadorErrores {
 
     private String newCorrelationId() {
         return UUID.randomUUID().toString();
-    }
-
-    public record ErrorResponse(
-            Instant timestamp,
-            int status,
-            String code,
-            String message,
-            String correlationId,
-            Map<String, String> fieldErrors
-    ) {
     }
 }

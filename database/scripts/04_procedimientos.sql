@@ -39,6 +39,165 @@ END SP_BITACORA;
 -- MODULO 1: ADMINISTRACION DE LA RED
 -- =============================================================
 
+-- -------------------------------------------------------------
+-- Seguridad de la aplicacion. Los hashes BCrypt se generan en Java.
+-- Ningun procedimiento recibe ni conserva contrasenas en claro.
+-- -------------------------------------------------------------
+
+CREATE OR REPLACE PROCEDURE SP_AUTH_BOOTSTRAP_ADMIN (
+  p_nombre_usuario IN VARCHAR2, p_nombre_mostrar IN VARCHAR2,
+  p_hash IN VARCHAR2, p_actor IN VARCHAR2,
+  p_id_usuario OUT NUMBER, p_creado OUT VARCHAR2
+) IS
+  v_total NUMBER;
+  v_id_rol NUMBER;
+BEGIN
+  LOCK TABLE USUARIO IN EXCLUSIVE MODE;
+  SELECT COUNT(*) INTO v_total FROM USUARIO;
+  IF v_total > 0 THEN
+    p_id_usuario := NULL; p_creado := 'N'; RETURN;
+  END IF;
+  BEGIN
+    SELECT id_rol INTO v_id_rol FROM ROL WHERE codigo = 'ADMIN' AND estado = 'ACTIVO';
+  EXCEPTION WHEN NO_DATA_FOUND THEN
+    RAISE_APPLICATION_ERROR(-20179, 'El rol ADMIN no esta disponible');
+  END;
+  p_id_usuario := SEQ_USUARIO.NEXTVAL;
+  INSERT INTO USUARIO (id_usuario, nombre_usuario, nombre_mostrar, hash_contrasena)
+  VALUES (p_id_usuario, p_nombre_usuario, p_nombre_mostrar, p_hash);
+  INSERT INTO USUARIO_ROL (id_usuario, id_rol, asignado_por)
+  VALUES (p_id_usuario, v_id_rol, SUBSTR(p_actor, 1, 60));
+  p_creado := 'S';
+END SP_AUTH_BOOTSTRAP_ADMIN;
+/
+
+CREATE OR REPLACE PROCEDURE SP_AUTH_CREAR_USUARIO (
+  p_nombre_usuario IN VARCHAR2, p_nombre_mostrar IN VARCHAR2,
+  p_hash IN VARCHAR2, p_roles IN VARCHAR2, p_actor IN VARCHAR2,
+  p_id_usuario OUT NUMBER
+) IS
+  v_total NUMBER;
+  v_esperados NUMBER;
+BEGIN
+  SELECT COUNT(*) INTO v_total FROM USUARIO WHERE nombre_usuario = p_nombre_usuario;
+  IF v_total > 0 THEN RAISE_APPLICATION_ERROR(-20170, 'El usuario ya existe'); END IF;
+  IF p_roles IS NULL THEN RAISE_APPLICATION_ERROR(-20173, 'Se requiere al menos un rol'); END IF;
+  v_esperados := REGEXP_COUNT(p_roles, ',') + 1;
+  SELECT COUNT(*) INTO v_total FROM ROL
+   WHERE estado = 'ACTIVO' AND INSTR(',' || p_roles || ',', ',' || codigo || ',') > 0;
+  IF v_total <> v_esperados THEN RAISE_APPLICATION_ERROR(-20172, 'Uno o mas roles no son validos'); END IF;
+
+  p_id_usuario := SEQ_USUARIO.NEXTVAL;
+  INSERT INTO USUARIO (id_usuario, nombre_usuario, nombre_mostrar, hash_contrasena)
+  VALUES (p_id_usuario, p_nombre_usuario, p_nombre_mostrar, p_hash);
+  INSERT INTO USUARIO_ROL (id_usuario, id_rol, asignado_por)
+  SELECT p_id_usuario, id_rol, SUBSTR(p_actor, 1, 60) FROM ROL
+   WHERE INSTR(',' || p_roles || ',', ',' || codigo || ',') > 0;
+EXCEPTION
+  WHEN DUP_VAL_ON_INDEX THEN RAISE_APPLICATION_ERROR(-20170, 'El usuario ya existe');
+END SP_AUTH_CREAR_USUARIO;
+/
+
+CREATE OR REPLACE PROCEDURE SP_AUTH_REEMPLAZAR_ROLES (
+  p_nombre_usuario IN VARCHAR2, p_roles IN VARCHAR2, p_actor IN VARCHAR2
+) IS
+  v_id_usuario NUMBER;
+  v_total NUMBER;
+  v_esperados NUMBER;
+BEGIN
+  BEGIN
+    SELECT id_usuario INTO v_id_usuario FROM USUARIO
+     WHERE nombre_usuario = p_nombre_usuario FOR UPDATE;
+  EXCEPTION WHEN NO_DATA_FOUND THEN RAISE_APPLICATION_ERROR(-20171, 'El usuario no existe');
+  END;
+  IF p_roles IS NULL THEN RAISE_APPLICATION_ERROR(-20173, 'Se requiere al menos un rol'); END IF;
+  v_esperados := REGEXP_COUNT(p_roles, ',') + 1;
+  SELECT COUNT(*) INTO v_total FROM ROL
+   WHERE estado = 'ACTIVO' AND INSTR(',' || p_roles || ',', ',' || codigo || ',') > 0;
+  IF v_total <> v_esperados THEN RAISE_APPLICATION_ERROR(-20172, 'Uno o mas roles no son validos'); END IF;
+  DELETE FROM USUARIO_ROL WHERE id_usuario = v_id_usuario;
+  INSERT INTO USUARIO_ROL (id_usuario, id_rol, asignado_por)
+  SELECT v_id_usuario, id_rol, SUBSTR(p_actor, 1, 60) FROM ROL
+   WHERE INSTR(',' || p_roles || ',', ',' || codigo || ',') > 0;
+END SP_AUTH_REEMPLAZAR_ROLES;
+/
+
+CREATE OR REPLACE PROCEDURE SP_AUTH_CAMBIAR_ESTADO (
+  p_nombre_usuario IN VARCHAR2, p_estado IN VARCHAR2, p_actor IN VARCHAR2
+) IS
+  v_id NUMBER;
+BEGIN
+  IF p_estado NOT IN ('ACTIVO','BLOQUEADO','DESHABILITADO') THEN
+    RAISE_APPLICATION_ERROR(-20174, 'Estado de usuario no valido');
+  END IF;
+  BEGIN
+    SELECT id_usuario INTO v_id FROM USUARIO WHERE nombre_usuario = p_nombre_usuario FOR UPDATE;
+  EXCEPTION WHEN NO_DATA_FOUND THEN RAISE_APPLICATION_ERROR(-20171, 'El usuario no existe');
+  END;
+  UPDATE USUARIO SET estado = p_estado,
+         intentos_fallidos = CASE WHEN p_estado = 'ACTIVO' THEN 0 ELSE intentos_fallidos END,
+         inicio_ventana_fallos = CASE WHEN p_estado = 'ACTIVO' THEN NULL ELSE inicio_ventana_fallos END,
+         bloqueado_hasta = CASE WHEN p_estado = 'ACTIVO' THEN NULL ELSE bloqueado_hasta END
+   WHERE id_usuario = v_id;
+END SP_AUTH_CAMBIAR_ESTADO;
+/
+
+CREATE OR REPLACE PROCEDURE SP_AUTH_CAMBIAR_HASH (
+  p_nombre_usuario IN VARCHAR2, p_hash IN VARCHAR2, p_actor IN VARCHAR2
+) IS
+  v_id NUMBER;
+BEGIN
+  BEGIN
+    SELECT id_usuario INTO v_id FROM USUARIO WHERE nombre_usuario = p_nombre_usuario FOR UPDATE;
+  EXCEPTION WHEN NO_DATA_FOUND THEN RAISE_APPLICATION_ERROR(-20171, 'El usuario no existe');
+  END;
+  UPDATE USUARIO SET hash_contrasena = p_hash, intentos_fallidos = 0,
+         inicio_ventana_fallos = NULL, bloqueado_hasta = NULL
+   WHERE id_usuario = v_id;
+END SP_AUTH_CAMBIAR_HASH;
+/
+
+CREATE OR REPLACE PROCEDURE SP_AUTH_REGISTRAR_FALLO (
+  p_id_usuario IN NUMBER, p_bloqueado_hasta OUT TIMESTAMP
+) IS
+  v_intentos NUMBER;
+  v_inicio TIMESTAMP;
+  v_ahora TIMESTAMP := SYS_EXTRACT_UTC(SYSTIMESTAMP);
+BEGIN
+  BEGIN
+    SELECT intentos_fallidos, inicio_ventana_fallos INTO v_intentos, v_inicio
+      FROM USUARIO WHERE id_usuario = p_id_usuario FOR UPDATE;
+  EXCEPTION WHEN NO_DATA_FOUND THEN RAISE_APPLICATION_ERROR(-20171, 'El usuario no existe');
+  END;
+  IF v_inicio IS NULL OR v_ahora >= v_inicio + NUMTODSINTERVAL(15, 'MINUTE') THEN
+    v_intentos := 1; v_inicio := v_ahora;
+  ELSE
+    v_intentos := v_intentos + 1;
+  END IF;
+  IF v_intentos >= 5 THEN
+    p_bloqueado_hasta := v_ahora + NUMTODSINTERVAL(15, 'MINUTE');
+    UPDATE USUARIO SET intentos_fallidos = v_intentos, inicio_ventana_fallos = v_inicio,
+           bloqueado_hasta = p_bloqueado_hasta, estado = 'BLOQUEADO'
+     WHERE id_usuario = p_id_usuario;
+  ELSE
+    p_bloqueado_hasta := NULL;
+    UPDATE USUARIO SET intentos_fallidos = v_intentos, inicio_ventana_fallos = v_inicio
+     WHERE id_usuario = p_id_usuario;
+  END IF;
+END SP_AUTH_REGISTRAR_FALLO;
+/
+
+CREATE OR REPLACE PROCEDURE SP_AUTH_REGISTRAR_EXITO (p_id_usuario IN NUMBER) IS
+BEGIN
+  UPDATE USUARIO SET intentos_fallidos = 0, inicio_ventana_fallos = NULL,
+         bloqueado_hasta = NULL,
+         estado = CASE WHEN estado = 'BLOQUEADO' THEN 'ACTIVO' ELSE estado END,
+         ultimo_ingreso_exitoso = SYS_EXTRACT_UTC(SYSTIMESTAMP)
+   WHERE id_usuario = p_id_usuario;
+  IF SQL%ROWCOUNT = 0 THEN RAISE_APPLICATION_ERROR(-20171, 'El usuario no existe'); END IF;
+END SP_AUTH_REGISTRAR_EXITO;
+/
+
 -- Asocia una estacion a una linea en cierta posicion.
 -- Si ya hay una estacion en ese orden, corre las demas un lugar.
 CREATE OR REPLACE PROCEDURE SP_AGREGAR_ESTACION_LINEA (

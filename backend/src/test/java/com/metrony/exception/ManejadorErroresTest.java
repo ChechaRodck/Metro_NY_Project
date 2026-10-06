@@ -31,7 +31,7 @@ class ManejadorErroresTest {
                 "JdbcTemplate failed with DB_PASSWORD=exposed", sqlException
         );
 
-        ResponseEntity<ManejadorErrores.ErrorResponse> response = handler.errorBaseDatos(exception);
+        ResponseEntity<ApiErrorResponse> response = handler.errorBaseDatos(exception);
         String json = objectMapper.writeValueAsString(response.getBody());
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
@@ -62,8 +62,8 @@ class ManejadorErroresTest {
                 "Connection failed for user and password", sqlException
         );
 
-        ResponseEntity<ManejadorErrores.ErrorResponse> response = handler.errorBaseDatos(exception);
-        ManejadorErrores.ErrorResponse body = response.getBody();
+        ResponseEntity<ApiErrorResponse> response = handler.errorBaseDatos(exception);
+        ApiErrorResponse body = response.getBody();
         String json = objectMapper.writeValueAsString(body);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
@@ -80,10 +80,10 @@ class ManejadorErroresTest {
 
     @Test
     void doesNotEchoMalformedRequestOrMissingResourceMessages() throws Exception {
-        ResponseEntity<ManejadorErrores.ErrorResponse> malformed = handler.peticionMala(
+        ResponseEntity<ApiErrorResponse> malformed = handler.peticionMala(
                 new IllegalArgumentException("SELECT * FROM TARJETA WHERE numero=" + SENSITIVE_CARD)
         );
-        ResponseEntity<ManejadorErrores.ErrorResponse> missing = handler.noEncontrado(
+        ResponseEntity<ApiErrorResponse> missing = handler.noEncontrado(
                 new NoEncontradoException("No existe la tarjeta " + SENSITIVE_CARD)
         );
 

@@ -749,6 +749,62 @@ CREATE TABLE BITACORA (
 
 
 -- -------------------------------------------------------------
+-- SEGURIDAD (usuarios de aplicacion y roles; nunca contrasenas en claro)
+-- -------------------------------------------------------------
+
+CREATE TABLE ROL (
+  id_rol                  NUMBER(10)          NOT NULL,
+  codigo                  VARCHAR2(30 CHAR)   NOT NULL,
+  nombre                  VARCHAR2(80 CHAR)   NOT NULL,
+  descripcion             VARCHAR2(250 CHAR),
+  estado                  VARCHAR2(10 CHAR)  DEFAULT 'ACTIVO' NOT NULL,
+  creado_en               TIMESTAMP(6)       DEFAULT SYS_EXTRACT_UTC(SYSTIMESTAMP) NOT NULL,
+  CONSTRAINT ROL_PK PRIMARY KEY (id_rol),
+  CONSTRAINT ROL_CODIGO_UK UNIQUE (codigo),
+  CONSTRAINT ROL_CODIGO_CK CHECK (REGEXP_LIKE(codigo, '^[A-Z][A-Z_]{2,29}$')),
+  CONSTRAINT ROL_ESTADO_CK CHECK (estado IN ('ACTIVO','INACTIVO'))
+);
+
+CREATE TABLE USUARIO (
+  id_usuario              NUMBER(10)          NOT NULL,
+  nombre_usuario          VARCHAR2(60 CHAR)   NOT NULL,
+  nombre_mostrar          VARCHAR2(120 CHAR)  NOT NULL,
+  hash_contrasena         VARCHAR2(60 CHAR)   NOT NULL,
+  estado                  VARCHAR2(15 CHAR)  DEFAULT 'ACTIVO' NOT NULL,
+  intentos_fallidos       NUMBER(3)          DEFAULT 0 NOT NULL,
+  inicio_ventana_fallos   TIMESTAMP(6),
+  bloqueado_hasta         TIMESTAMP(6),
+  ultimo_ingreso_exitoso  TIMESTAMP(6),
+  credenciales_actualizadas_en TIMESTAMP(6) DEFAULT SYS_EXTRACT_UTC(SYSTIMESTAMP) NOT NULL,
+  creado_en               TIMESTAMP(6)       DEFAULT SYS_EXTRACT_UTC(SYSTIMESTAMP) NOT NULL,
+  actualizado_en          TIMESTAMP(6)       DEFAULT SYS_EXTRACT_UTC(SYSTIMESTAMP) NOT NULL,
+  version                 NUMBER(10)         DEFAULT 0 NOT NULL,
+  CONSTRAINT USUARIO_PK PRIMARY KEY (id_usuario),
+  CONSTRAINT USUARIO_NOMBRE_UK UNIQUE (nombre_usuario),
+  CONSTRAINT USUARIO_NOMBRE_CK CHECK (
+    nombre_usuario = LOWER(TRIM(nombre_usuario))
+    AND REGEXP_LIKE(nombre_usuario, '^[a-z0-9][a-z0-9._-]{2,59}$')),
+  CONSTRAINT USUARIO_HASH_CK CHECK (REGEXP_LIKE(hash_contrasena, '^\$2[aby]\$[0-9]{2}\$.{53}$')),
+  CONSTRAINT USUARIO_ESTADO_CK CHECK (estado IN ('ACTIVO','BLOQUEADO','DESHABILITADO')),
+  CONSTRAINT USUARIO_INTENTOS_CK CHECK (intentos_fallidos BETWEEN 0 AND 999),
+  CONSTRAINT USUARIO_VENTANA_CK CHECK (
+    (intentos_fallidos = 0 AND inicio_ventana_fallos IS NULL)
+    OR (intentos_fallidos > 0 AND inicio_ventana_fallos IS NOT NULL)),
+  CONSTRAINT USUARIO_VERSION_CK CHECK (version >= 0)
+);
+
+CREATE TABLE USUARIO_ROL (
+  id_usuario              NUMBER(10)          NOT NULL,
+  id_rol                  NUMBER(10)          NOT NULL,
+  asignado_en             TIMESTAMP(6)       DEFAULT SYS_EXTRACT_UTC(SYSTIMESTAMP) NOT NULL,
+  asignado_por            VARCHAR2(60 CHAR),
+  CONSTRAINT USUARIO_ROL_PK PRIMARY KEY (id_usuario, id_rol),
+  CONSTRAINT UR_USUARIO_FK FOREIGN KEY (id_usuario) REFERENCES USUARIO (id_usuario),
+  CONSTRAINT UR_ROL_FK FOREIGN KEY (id_rol) REFERENCES ROL (id_rol)
+);
+
+
+-- -------------------------------------------------------------
 -- Indices para las FK que mas se consultan
 -- -------------------------------------------------------------
 CREATE INDEX VP_TREN_IX          ON VIAJE_PROGRAMADO (codigo_tren);
@@ -762,3 +818,4 @@ CREATE INDEX TV_TREN_IX          ON TREN_VAGON (codigo_tren);
 CREATE INDEX OM_EQUIPO_IX        ON ORDEN_MANTENIMIENTO (id_equipo);
 CREATE INDEX IE_INCIDENTE_IX     ON INCIDENTE_ELEMENTO (numero_incidente);
 CREATE INDEX RE_ESTACION_IX      ON RUTA_ESTACION (id_estacion);
+CREATE INDEX USUARIO_ROL_ROL_IX  ON USUARIO_ROL (id_rol);

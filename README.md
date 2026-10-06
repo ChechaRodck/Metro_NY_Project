@@ -33,6 +33,11 @@ Las credenciales de Oracle no se guardan en Git. El backend exige `DB_URL`,
 `DB_USERNAME` y `DB_PASSWORD` en el entorno; consulte
 [`backend/.env.example`](backend/.env.example) para conocer todas las variables.
 
+La API usa autenticacion Bearer JWT stateless y roles almacenados en Oracle. El
+esquema no instala cuentas predeterminadas: el primer administrador se crea con
+un bootstrap explicito de un solo uso documentado en
+[`backend/README.md`](backend/README.md).
+
 ## Tecnologias
 
 - Oracle Database 11g Release 2 / Oracle XE 11.2.
