@@ -79,13 +79,17 @@ public class TrenRepository extends BaseRepository {
 
     public List<Map<String, Object>> viajesDelTren(String codigo) {
         return listar("""
-                SELECT v.numero_viaje, r.codigo_ruta, v.salida_programada, v.llegada_programada,
-                       v.estado_viaje, v.id_conductor
-                  FROM VIAJE_PROGRAMADO v
-                  JOIN RUTA r ON r.id_ruta = v.id_ruta
-                 WHERE v.codigo_tren = ?
-                 ORDER BY v.salida_programada DESC
-                 FETCH FIRST 50 ROWS ONLY
+                SELECT *
+                  FROM (
+                        SELECT v.numero_viaje, r.codigo_ruta, v.salida_programada, v.llegada_programada,
+                               v.estado_viaje, v.id_conductor
+                          FROM VIAJE_PROGRAMADO v
+                          JOIN RUTA r ON r.id_ruta = v.id_ruta
+                         WHERE v.codigo_tren = ?
+                         ORDER BY v.salida_programada DESC, v.numero_viaje DESC
+                       )
+                 WHERE ROWNUM <= 50
+                 ORDER BY salida_programada DESC, numero_viaje DESC
                 """, codigo);
     }
 

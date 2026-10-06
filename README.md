@@ -1,26 +1,43 @@
 # Sistema de Gestion del Metro de Nueva York
 
-Proyecto del curso Base de Datos 1 - Universidad Mariano Galvez, Centro Universitario de Jalapa.
+Proyecto academico independiente del curso Base de Datos 1 de la Universidad
+Mariano Galvez, Centro Universitario de Jalapa. No tiene afiliacion oficial con
+la MTA.
 
 ## Estructura
+
 | Carpeta | Contenido |
 |---------|-----------|
-| `database/scripts/` | Scripts de Oracle: tablas, secuencias, funciones, procedimientos, triggers, vistas, datos de prueba, consultas y pruebas |
-| `database/evidencias/` | Capturas y salidas de las pruebas |
-| `backend/` | API REST en Spring Boot (Java) que usa la base de Oracle |
-| `frontend/` | Aplicacion web (React) |
-| `docs/` | Modelo de datos (Data Modeler) |
+| `database/scripts/` | Fuente canonica del esquema, logica PL/SQL, datos demo, consultas y pruebas |
+| `backend/` | API REST en Spring Boot 3.3, Java 17 y JdbcTemplate |
+| `frontend/` | Aplicacion web React/Vite |
+| `docs/` | Material academico y modelos historicos |
 
-## Como levantar todo (en orden)
-1. **Base de datos:** seguir [`database/scripts/README.md`](database/scripts/README.md).
-2. **Backend:** seguir [`backend/README.md`](backend/README.md). Queda en `http://localhost:8080/api`.
-3. **Frontend:** consume la API del backend (la lista de endpoints con ejemplos esta en el README del backend).
+## Plataforma de base de datos
+
+El objetivo vinculante es **Oracle Database 11g Release 2**, incluida Oracle XE
+11.2. Los scripts no dependen de contenedores PDB ni de sintaxis introducida en
+Oracle 12c. `LISTAGG` se conserva porque esta disponible en Oracle 11g Release 2.
+
+`database/scripts/` es la unica fuente autoritativa para instalar o actualizar
+el esquema. `docs/Script_Metro_NY.sql` es una referencia historica deprecada y
+no debe ejecutarse ni usarse para generar migraciones.
+
+## Puesta en marcha
+
+1. Instalar la base siguiendo [`database/scripts/README.md`](database/scripts/README.md).
+2. Configurar y levantar la API siguiendo [`backend/README.md`](backend/README.md).
+3. Levantar el frontend con sus instrucciones propias.
+
+Las credenciales de Oracle no se guardan en Git. El backend exige `DB_URL`,
+`DB_USERNAME` y `DB_PASSWORD` en el entorno; consulte
+[`backend/.env.example`](backend/.env.example) para conocer todas las variables.
 
 ## Tecnologias
-- Oracle Database XE 21c + SQL Developer
-- Java 17/21, Spring Boot 3.3, Maven
-- React
 
-## Notas
-- Los cambios de la base respecto al modelo original estan en
-  [`database/scripts/CAMBIOS_AL_MODELO.md`](database/scripts/CAMBIOS_AL_MODELO.md).
+- Oracle Database 11g Release 2 / Oracle XE 11.2.
+- Java 17, Spring Boot 3.3 y Maven.
+- React y Vite.
+
+Los cambios respecto al modelo academico original estan documentados en
+[`database/scripts/CAMBIOS_AL_MODELO.md`](database/scripts/CAMBIOS_AL_MODELO.md).

@@ -1367,11 +1367,14 @@ BEGIN
 
   BEGIN
     SELECT numero_transaccion INTO o_transaccion
-      FROM VIAJE_PASAJERO
-     WHERE numero_tarjeta = p_numero_tarjeta
-       AND estado = 'ABIERTO'
-     ORDER BY fecha_hora_ingreso DESC
-     FETCH FIRST 1 ROW ONLY;
+      FROM (
+            SELECT numero_transaccion
+              FROM VIAJE_PASAJERO
+             WHERE numero_tarjeta = p_numero_tarjeta
+               AND estado = 'ABIERTO'
+             ORDER BY fecha_hora_ingreso DESC, numero_transaccion DESC
+           )
+     WHERE ROWNUM = 1;
   EXCEPTION
     WHEN NO_DATA_FOUND THEN
       RAISE_APPLICATION_ERROR(-20088, 'La tarjeta no tiene ningun viaje abierto');

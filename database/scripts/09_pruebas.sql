@@ -19,7 +19,7 @@ PROMPT ===== MODULO 5: PASAJEROS Y TARJETAS =====
 DECLARE
   v_trx NUMBER; v_monto NUMBER; v_saldo NUMBER;
 BEGIN
-  SP_REGISTRAR_INGRESO(4000000000000001, 3, v_trx, v_monto, v_saldo);
+  SP_REGISTRAR_INGRESO(TO_NUMBER('40000000' || '00000001'), 3, v_trx, v_monto, v_saldo);
   DBMS_OUTPUT.PUT_LINE('1. Ingreso OK. Transaccion ' || v_trx || ', cobrado ' || v_monto || ', saldo ' || v_saldo);
 END;
 /
@@ -28,7 +28,7 @@ END;
 DECLARE
   v_trx NUMBER;
 BEGIN
-  SP_REGISTRAR_SALIDA(4000000000000001, 10, v_trx);
+  SP_REGISTRAR_SALIDA(TO_NUMBER('40000000' || '00000001'), 10, v_trx);
   DBMS_OUTPUT.PUT_LINE('2. Salida OK. Transaccion ' || v_trx);
 END;
 /
@@ -37,7 +37,7 @@ END;
 DECLARE
   v_trx NUMBER; v_monto NUMBER; v_saldo NUMBER;
 BEGIN
-  SP_REGISTRAR_INGRESO(4000000000000007, 3, v_trx, v_monto, v_saldo);
+  SP_REGISTRAR_INGRESO(TO_NUMBER('40000000' || '00000007'), 3, v_trx, v_monto, v_saldo);
   DBMS_OUTPUT.PUT_LINE('3. NO DEBIO PASAR');
 EXCEPTION
   WHEN OTHERS THEN DBMS_OUTPUT.PUT_LINE('3. Error esperado: ' || SQLERRM);
@@ -48,7 +48,7 @@ END;
 DECLARE
   v_trx NUMBER; v_monto NUMBER; v_saldo NUMBER;
 BEGIN
-  SP_REGISTRAR_INGRESO(4000000000000010, 3, v_trx, v_monto, v_saldo);
+  SP_REGISTRAR_INGRESO(TO_NUMBER('40000000' || '00000010'), 3, v_trx, v_monto, v_saldo);
   DBMS_OUTPUT.PUT_LINE('4. NO DEBIO PASAR');
 EXCEPTION
   WHEN OTHERS THEN DBMS_OUTPUT.PUT_LINE('4. Error esperado: ' || SQLERRM);
@@ -59,7 +59,7 @@ END;
 DECLARE
   v_trx NUMBER; v_monto NUMBER; v_saldo NUMBER;
 BEGIN
-  SP_REGISTRAR_INGRESO(4000000000000009, 4, v_trx, v_monto, v_saldo);
+  SP_REGISTRAR_INGRESO(TO_NUMBER('40000000' || '00000009'), 4, v_trx, v_monto, v_saldo);
   DBMS_OUTPUT.PUT_LINE('5. NO DEBIO PASAR');
 EXCEPTION
   WHEN OTHERS THEN DBMS_OUTPUT.PUT_LINE('5. Error esperado: ' || SQLERRM);
@@ -70,9 +70,9 @@ END;
 DECLARE
   v_trx NUMBER; v_monto NUMBER; v_saldo NUMBER;
 BEGIN
-  SP_REGISTRAR_INGRESO(4000000000000008, 5, v_trx, v_monto, v_saldo);
+  SP_REGISTRAR_INGRESO(TO_NUMBER('40000000' || '00000008'), 5, v_trx, v_monto, v_saldo);
   DBMS_OUTPUT.PUT_LINE('6a. Primer ingreso OK, saldo ' || v_saldo);
-  SP_REGISTRAR_INGRESO(4000000000000008, 5, v_trx, v_monto, v_saldo);
+  SP_REGISTRAR_INGRESO(TO_NUMBER('40000000' || '00000008'), 5, v_trx, v_monto, v_saldo);
   DBMS_OUTPUT.PUT_LINE('6b. NO DEBIO PASAR');
 EXCEPTION
   WHEN OTHERS THEN DBMS_OUTPUT.PUT_LINE('6b. Error esperado: ' || SQLERRM);
@@ -83,8 +83,8 @@ END;
 DECLARE
   v_trx NUMBER; v_saldo NUMBER;
 BEGIN
-  DBMS_OUTPUT.PUT_LINE('7. Saldo antes: ' || FN_SALDO_TARJETA(4000000000000009));
-  SP_RECARGAR_TARJETA(4000000000000009, 10, 'EFECTIVO', 'MAQUINA_ESTACION', 4, v_trx, v_saldo);
+  DBMS_OUTPUT.PUT_LINE('7. Saldo antes: ' || FN_SALDO_TARJETA(TO_NUMBER('40000000' || '00000009')));
+  SP_RECARGAR_TARJETA(TO_NUMBER('40000000' || '00000009'), 10, 'EFECTIVO', 'MAQUINA_ESTACION', 4, v_trx, v_saldo);
   DBMS_OUTPUT.PUT_LINE('7. Recarga ' || v_trx || ' OK, saldo nuevo: ' || v_saldo);
 END;
 /
@@ -93,7 +93,7 @@ END;
 DECLARE
   v_trx NUMBER; v_saldo NUMBER;
 BEGIN
-  SP_RECARGAR_TARJETA(4000000000000009, -5, 'EFECTIVO', 'MAQUINA_ESTACION', 4, v_trx, v_saldo);
+  SP_RECARGAR_TARJETA(TO_NUMBER('40000000' || '00000009'), -5, 'EFECTIVO', 'MAQUINA_ESTACION', 4, v_trx, v_saldo);
   DBMS_OUTPUT.PUT_LINE('8. NO DEBIO PASAR');
 EXCEPTION
   WHEN OTHERS THEN DBMS_OUTPUT.PUT_LINE('8. Error esperado: ' || SQLERRM);
@@ -113,7 +113,7 @@ END;
 DECLARE
   v_trx NUMBER; v_monto NUMBER; v_saldo NUMBER;
 BEGIN
-  SP_REGISTRAR_INGRESO(4000000000000006, 2, v_trx, v_monto, v_saldo);
+  SP_REGISTRAR_INGRESO(TO_NUMBER('40000000' || '00000006'), 2, v_trx, v_monto, v_saldo);
   DBMS_OUTPUT.PUT_LINE('10. Pase mensual: cobrado ' || v_monto || ' (debe ser 0), saldo ' || v_saldo);
 END;
 /
@@ -141,7 +141,7 @@ END;
 
 -- 13. [ERROR ESPERADO] el trigger no deja poner saldo negativo
 BEGIN
-  UPDATE TARJETA SET saldo = -10 WHERE numero_tarjeta = 4000000000000001;
+  UPDATE TARJETA SET saldo = -10 WHERE numero_tarjeta = TO_NUMBER('40000000' || '00000001');
   DBMS_OUTPUT.PUT_LINE('13. NO DEBIO PASAR');
 EXCEPTION
   WHEN OTHERS THEN DBMS_OUTPUT.PUT_LINE('13. Error esperado: ' || SQLERRM);
@@ -376,7 +376,7 @@ END;
 DECLARE
   v_trx NUMBER; v_monto NUMBER; v_saldo NUMBER;
 BEGIN
-  SP_REGISTRAR_INGRESO(4000000000000003, 12, v_trx, v_monto, v_saldo);
+  SP_REGISTRAR_INGRESO(TO_NUMBER('40000000' || '00000003'), 12, v_trx, v_monto, v_saldo);
   DBMS_OUTPUT.PUT_LINE('32. NO DEBIO PASAR');
 EXCEPTION
   WHEN OTHERS THEN DBMS_OUTPUT.PUT_LINE('32. Error esperado: ' || SQLERRM);
@@ -442,8 +442,13 @@ END;
 
 -- ultimos movimientos de la bitacora
 SELECT fecha, tabla, id_registro, accion, valor_anterior, valor_nuevo, tipo, detalle
-  FROM BITACORA
- ORDER BY id_bitacora DESC
- FETCH FIRST 20 ROWS ONLY;
+  FROM (
+        SELECT id_bitacora, fecha, tabla, id_registro, accion,
+               valor_anterior, valor_nuevo, tipo, detalle
+          FROM BITACORA
+         ORDER BY id_bitacora DESC
+       )
+ WHERE ROWNUM <= 20
+ ORDER BY id_bitacora DESC;
 
 ROLLBACK;

@@ -150,10 +150,14 @@ public class RedRepository extends BaseRepository {
 
     public List<Map<String, Object>> proximasSalidas(Long idEstacion, int limite) {
         return listar("""
-                SELECT * FROM VW_PROXIMAS_SALIDAS
-                 WHERE id_estacion = ?
-                 ORDER BY hora_estimada
-                 FETCH FIRST ? ROWS ONLY
+                SELECT *
+                  FROM (
+                        SELECT * FROM VW_PROXIMAS_SALIDAS
+                         WHERE id_estacion = ?
+                         ORDER BY hora_estimada, numero_viaje
+                       )
+                 WHERE ROWNUM <= ?
+                 ORDER BY hora_estimada, numero_viaje
                 """, idEstacion, limite);
     }
 

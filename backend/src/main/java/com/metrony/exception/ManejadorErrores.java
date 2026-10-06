@@ -1,5 +1,6 @@
 package com.metrony.exception;
 
+import jakarta.validation.ConstraintViolationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataAccessException;
@@ -13,106 +14,153 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import java.sql.SQLException;
-import java.time.LocalDateTime;
+import java.time.Instant;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
- * Convierte los errores en respuestas JSON entendibles para el frontend.
- * Los errores que lanzan los procedimientos (RAISE_APPLICATION_ERROR -20xxx)
- * son reglas de negocio, entonces se devuelven como 400 con el mensaje de Oracle.
+ * Convierte los fallos en un contrato estable sin exponer mensajes del driver,
+ * SQL, restricciones, clases internas ni datos de conexion.
  */
 @RestControllerAdvice
 public class ManejadorErrores {
 
     private static final Logger log = LoggerFactory.getLogger(ManejadorErrores.class);
+    private static final String GENERIC_DATABASE_MESSAGE =
+            "No fue posible completar la operacion en este momento.";
+    private static final String GENERIC_SERVER_MESSAGE =
+            "Ocurrio un error inesperado. Use el identificador de correlacion al solicitar ayuda.";
+
+    private final OracleErrorCatalog oracleErrorCatalog = new OracleErrorCatalog();
 
     @ExceptionHandler(NoEncontradoException.class)
-    public ResponseEntity<Map<String, Object>> noEncontrado(NoEncontradoException e) {
-        return respuesta(HttpStatus.NOT_FOUND, e.getMessage(), null);
+    public ResponseEntity<ErrorResponse> noEncontrado(NoEncontradoException ignored) {
+        return response(HttpStatus.NOT_FOUND, "RESOURCE_NOT_FOUND",
+                "No se encontro el recurso solicitado.", Map.of());
     }
 
     @ExceptionHandler(DataAccessException.class)
-    public ResponseEntity<Map<String, Object>> errorBaseDatos(DataAccessException e) {
-        SQLException sql = buscarSQLException(e);
-        if (sql == null) {
-            log.error("Error de base de datos", e);
-            return respuesta(HttpStatus.INTERNAL_SERVER_ERROR, "Error en la base de datos", null);
+    public ResponseEntity<ErrorResponse> errorBaseDatos(DataAccessException exception) {
+        String correlationId = newCorrelationId();
+        SQLException sqlException = findSqlException(exception);
+
+        if (sqlException == null) {
+            log.error("Fallo de acceso a datos. correlacion={}, codigoSql=no-disponible", correlationId);
+            return response(HttpStatus.INTERNAL_SERVER_ERROR, "DATABASE_ERROR",
+                    GENERIC_DATABASE_MESSAGE, Map.of(), correlationId);
         }
 
-        int codigo = sql.getErrorCode();
-        String mensajeOracle = primeraLinea(sql.getMessage());
-
-        // errores de negocio lanzados desde PL/SQL
-        if (codigo >= 20000 && codigo <= 20999) {
-            return respuesta(HttpStatus.BAD_REQUEST, quitarPrefijo(mensajeOracle), codigo);
-        }
-
-        return switch (codigo) {
-            case 1 -> respuesta(HttpStatus.CONFLICT, "Ya existe un registro con esos datos (" + mensajeOracle + ")", codigo);
-            case 2291 -> respuesta(HttpStatus.BAD_REQUEST, "Se hace referencia a un registro que no existe (" + mensajeOracle + ")", codigo);
-            case 2292 -> respuesta(HttpStatus.CONFLICT, "El registro tiene datos relacionados y no se puede modificar/eliminar", codigo);
-            case 2290 -> respuesta(HttpStatus.BAD_REQUEST, "Algun valor no es valido (" + mensajeOracle + ")", codigo);
-            case 1400 -> respuesta(HttpStatus.BAD_REQUEST, "Falta un campo obligatorio (" + mensajeOracle + ")", codigo);
-            case 1722, 1858, 1861, 6502 -> respuesta(HttpStatus.BAD_REQUEST, "Formato de dato invalido (" + mensajeOracle + ")", codigo);
-            case 12899 -> respuesta(HttpStatus.BAD_REQUEST, "Un valor es demasiado largo (" + mensajeOracle + ")", codigo);
-            default -> {
-                log.error("Error de Oracle no controlado", e);
-                yield respuesta(HttpStatus.INTERNAL_SERVER_ERROR, mensajeOracle, codigo);
-            }
-        };
+        int oracleCode = sqlException.getErrorCode();
+        String sqlState = safeSqlState(sqlException.getSQLState());
+        return oracleErrorCatalog.find(oracleCode)
+                .map(error -> {
+                    log.warn("Fallo de base de datos controlado. correlacion={}, codigoSql={}, estadoSql={}",
+                            correlationId, oracleCode, sqlState);
+                    return response(error.status(), error.applicationCode(), error.message(),
+                            Map.of(), correlationId);
+                })
+                .orElseGet(() -> {
+                    log.error("Fallo de base de datos no catalogado. correlacion={}, codigoSql={}, estadoSql={}",
+                            correlationId, oracleCode, sqlState);
+                    return response(HttpStatus.INTERNAL_SERVER_ERROR, "DATABASE_ERROR",
+                            GENERIC_DATABASE_MESSAGE, Map.of(), correlationId);
+                });
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<Map<String, Object>> validacion(MethodArgumentNotValidException e) {
-        String detalle = e.getBindingResult().getFieldErrors().stream()
-                .map(f -> f.getField() + ": " + f.getDefaultMessage())
-                .collect(Collectors.joining(", "));
-        return respuesta(HttpStatus.BAD_REQUEST, "Datos invalidos -> " + detalle, null);
+    public ResponseEntity<ErrorResponse> validacion(MethodArgumentNotValidException exception) {
+        Map<String, String> fieldErrors = exception.getBindingResult().getFieldErrors().stream()
+                .collect(Collectors.toMap(
+                        error -> error.getField(),
+                        ignored -> "Valor invalido.",
+                        (first, ignored) -> first,
+                        LinkedHashMap::new
+                ));
+        return response(HttpStatus.UNPROCESSABLE_ENTITY, "VALIDATION_ERROR",
+                "Uno o mas campos no cumplen las reglas requeridas.", fieldErrors);
+    }
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<ErrorResponse> restriccionValidacion(ConstraintViolationException ignored) {
+        return response(HttpStatus.UNPROCESSABLE_ENTITY, "VALIDATION_ERROR",
+                "Uno o mas valores no cumplen las reglas requeridas.", Map.of());
     }
 
     @ExceptionHandler({HttpMessageNotReadableException.class, MethodArgumentTypeMismatchException.class,
             MissingServletRequestParameterException.class, IllegalArgumentException.class})
-    public ResponseEntity<Map<String, Object>> peticionMala(Exception e) {
-        return respuesta(HttpStatus.BAD_REQUEST, "Peticion invalida: " + primeraLinea(e.getMessage()), null);
+    public ResponseEntity<ErrorResponse> peticionMala(Exception ignored) {
+        return response(HttpStatus.BAD_REQUEST, "MALFORMED_REQUEST",
+                "La solicitud no tiene un formato valido.", Map.of());
     }
 
-    private ResponseEntity<Map<String, Object>> respuesta(HttpStatus estado, String mensaje, Integer codigoOracle) {
-        Map<String, Object> cuerpo = new LinkedHashMap<>();
-        cuerpo.put("fecha", LocalDateTime.now());
-        cuerpo.put("estado", estado.value());
-        cuerpo.put("error", mensaje);
-        if (codigoOracle != null) {
-            cuerpo.put("codigoOracle", codigoOracle);
-        }
-        return ResponseEntity.status(estado).body(cuerpo);
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ErrorResponse> errorInesperado(Exception exception) {
+        String correlationId = newCorrelationId();
+        logUnexpected(exception, correlationId);
+        return response(HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_ERROR",
+                GENERIC_SERVER_MESSAGE, Map.of(), correlationId);
     }
 
-    /**
-     * El driver de Oracle envuelve el error en varias capas; la mas profunda es una
-     * clase interna (OracleDatabaseException) que no es SQLException. Por eso se busca
-     * la primera SQLException de la cadena, que es la que trae el codigo ORA-xxxxx.
-     */
-    private SQLException buscarSQLException(Throwable e) {
-        Throwable actual = e;
-        while (actual != null) {
-            if (actual instanceof SQLException sql) {
-                return sql;
+    private ResponseEntity<ErrorResponse> response(HttpStatus status, String code, String message,
+                                                   Map<String, String> fieldErrors) {
+        return response(status, code, message, fieldErrors, newCorrelationId());
+    }
+
+    private ResponseEntity<ErrorResponse> response(HttpStatus status, String code, String message,
+                                                   Map<String, String> fieldErrors, String correlationId) {
+        Map<String, String> safeFieldErrors = Collections.unmodifiableMap(new LinkedHashMap<>(fieldErrors));
+        ErrorResponse body = new ErrorResponse(
+                Instant.now(), status.value(), code, message, correlationId, safeFieldErrors
+        );
+        return ResponseEntity.status(status).body(body);
+    }
+
+    private SQLException findSqlException(Throwable exception) {
+        Throwable current = exception;
+        while (current != null) {
+            if (current instanceof SQLException sqlException) {
+                return sqlException;
             }
-            actual = actual.getCause();
+            current = current.getCause();
         }
         return null;
     }
 
-    private String primeraLinea(String texto) {
-        if (texto == null) return "";
-        int salto = texto.indexOf('\n');
-        return (salto > 0 ? texto.substring(0, salto) : texto).trim();
+    private String safeSqlState(String sqlState) {
+        return sqlState == null || sqlState.isBlank() ? "no-disponible" : sqlState;
     }
 
-    // "ORA-20081: La tarjeta esta BLOQUEADA" -> "La tarjeta esta BLOQUEADA"
-    private String quitarPrefijo(String mensaje) {
-        return mensaje.replaceFirst("^ORA-\\d{5}:\\s*", "");
+    private void logUnexpected(Exception exception, String correlationId) {
+        StackTraceElement[] trace = exception.getStackTrace();
+        if (trace.length == 0) {
+            log.error("Fallo inesperado. correlacion={}, tipo={}",
+                    correlationId, exception.getClass().getSimpleName());
+            return;
+        }
+
+        StackTraceElement origin = trace[0];
+        log.error("Fallo inesperado. correlacion={}, tipo={}, origen={}.{}:{}",
+                correlationId,
+                exception.getClass().getSimpleName(),
+                origin.getClassName(),
+                origin.getMethodName(),
+                origin.getLineNumber());
+    }
+
+    private String newCorrelationId() {
+        return UUID.randomUUID().toString();
+    }
+
+    public record ErrorResponse(
+            Instant timestamp,
+            int status,
+            String code,
+            String message,
+            String correlationId,
+            Map<String, String> fieldErrors
+    ) {
     }
 }

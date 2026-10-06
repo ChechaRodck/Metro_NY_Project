@@ -39,13 +39,15 @@ public class ViajeRepository extends BaseRepository {
 
     /** Todos los filtros son opcionales. */
     public List<Map<String, Object>> listarViajes(LocalDate fecha, Long idRuta, String idLinea, String estado) {
-        return listar(SELECT_VIAJE + """
+        return listar("SELECT * FROM (" + SELECT_VIAJE + """
                  WHERE (? IS NULL OR TRUNC(v.salida_programada) = ?)
                    AND (? IS NULL OR v.id_ruta = ?)
                    AND (? IS NULL OR r.id_linea = ?)
                    AND (? IS NULL OR v.estado_viaje = ?)
-                 ORDER BY v.salida_programada
-                 FETCH FIRST 500 ROWS ONLY
+                 ORDER BY v.salida_programada, v.numero_viaje
+                )
+                 WHERE ROWNUM <= 500
+                 ORDER BY salida_programada, numero_viaje
                 """, fecha, fecha, idRuta, idRuta, idLinea, idLinea, estado, estado);
     }
 

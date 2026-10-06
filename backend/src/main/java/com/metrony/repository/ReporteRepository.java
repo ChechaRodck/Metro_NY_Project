@@ -83,7 +83,15 @@ public class ReporteRepository extends BaseRepository {
 
     // Consulta 11: estaciones con mayor flujo
     public List<Map<String, Object>> estacionesMayorFlujo(int limite) {
-        return listar("SELECT * FROM VW_ESTACIONES_FLUJO ORDER BY posicion FETCH FIRST ? ROWS ONLY", limite);
+        return listar("""
+                SELECT *
+                  FROM (
+                        SELECT * FROM VW_ESTACIONES_FLUJO
+                         ORDER BY posicion, id_estacion
+                       )
+                 WHERE ROWNUM <= ?
+                 ORDER BY posicion, id_estacion
+                """, limite);
     }
 
     // Consulta 13: linea con mas retrasos
@@ -144,11 +152,15 @@ public class ReporteRepository extends BaseRepository {
 
     public List<Map<String, Object>> bitacora(String tabla, String tipo, int limite) {
         return listar("""
-                SELECT * FROM BITACORA
-                 WHERE (? IS NULL OR tabla = ?)
-                   AND (? IS NULL OR tipo = ?)
+                SELECT *
+                  FROM (
+                        SELECT * FROM BITACORA
+                         WHERE (? IS NULL OR tabla = ?)
+                           AND (? IS NULL OR tipo = ?)
+                         ORDER BY id_bitacora DESC
+                       )
+                 WHERE ROWNUM <= ?
                  ORDER BY id_bitacora DESC
-                 FETCH FIRST ? ROWS ONLY
                 """, tabla, tabla, tipo, tipo, limite);
     }
 

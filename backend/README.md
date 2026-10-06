@@ -1,12 +1,52 @@
 # Backend - API del Metro NY
 
-Spring Boot 3 (Java 17) + JdbcTemplate + Oracle. La logica de negocio esta en los procedimientos
-almacenados; el backend los llama y devuelve JSON.
+Spring Boot 3.3 (Java 17) + JdbcTemplate + Oracle 11g Release 2. La logica de
+negocio esta en los procedimientos almacenados; el backend los llama y devuelve
+JSON.
 
 ## Requisitos
 - **JDK 17 o 21.** No usen 22 o mayor (por ejemplo el 25 que trae IntelliJ por defecto): Spring Boot 3.3 no los soporta bien.
 - IntelliJ IDEA (trae Maven incluido) o Maven instalado aparte.
-- Oracle encendido y la base creada con los scripts de `database/scripts` (ver su README).
+- Oracle Database 11g Release 2 u Oracle XE 11.2 con la base creada desde la
+  fuente canonica `database/scripts` (ver su README).
+
+## Configuracion del entorno
+
+La aplicacion no contiene credenciales predeterminadas. Defina estas variables
+en el proceso que inicia Spring Boot o en la configuracion de ejecucion del IDE:
+
+| Variable | Obligatoria | Uso |
+|----------|-------------|-----|
+| `DB_URL` | Si | URL JDBC de Oracle 11g |
+| `DB_USERNAME` | Si | Usuario del esquema de aplicacion |
+| `DB_PASSWORD` | Si | Contrasena del esquema de aplicacion |
+| `CORS_ALLOWED_ORIGINS` | No | Origenes exactos separados por coma; por defecto `http://localhost:5173` solo para desarrollo |
+| `APP_TIMEZONE` | No | Zona de tareas programadas; por defecto `America/Guatemala` |
+
+Formatos de URL compatibles:
+
+```text
+jdbc:oracle:thin:@localhost:1521:XE
+jdbc:oracle:thin:@//localhost:1521/service_name
+```
+
+`backend/.env.example` enumera los nombres sin valores. Spring Boot no carga un
+archivo `.env` automaticamente: exporte las variables en el sistema, inyectelas
+desde su plataforma o configurelas en el IDE. Los archivos `.env` reales estan
+ignorados por Git.
+
+Como una credencial de esquema aparecio anteriormente en archivos versionados y
+capturas, el DBA debe **rotarla manualmente en Oracle en todos los entornos donde
+se haya utilizado**. Eliminarla del arbol actual no la invalida ni reescribe el
+historial de Git.
+
+La lista CORS se recorta, descarta entradas vacias, elimina duplicados y rechaza
+el comodin `*`. CORS limita navegadores permitidos; no reemplaza autenticacion ni
+seguridad de produccion.
+
+La tarea diaria usa explicitamente `APP_TIMEZONE`. En esta fase las operaciones
+programadas usan `America/Guatemala`; JWT e instantes reales usaran UTC mas
+adelante. Oracle `DATE` y `SYSDATE` conservan por ahora su comportamiento actual.
 
 ## Como correrlo
 
@@ -34,8 +74,8 @@ Started Main in 1.8 seconds
 Luego abrir `http://localhost:8080/api/lineas` en el navegador: debe salir un JSON con las lineas A, C, E, 1 y 2.
 La primera peticion es la que se conecta a Oracle (en la consola sale `HikariPool-1 - Start completed`).
 
-La conexion esta en `src/main/resources/application.properties` (`metro_ny` / `metro123` en `localhost:1521/XEPDB1`).
-Si su Oracle usa otro puerto, servicio o clave, solo cambien esas lineas.
+Si la primera peticion no conecta, revise `DB_URL`, el listener y las credenciales
+inyectadas en el proceso; no edite `application.properties` con valores locales.
 
 ## Probar la API
 
@@ -43,23 +83,16 @@ Los GET se prueban directo en el navegador. Para los POST usar **Git Bash** (el 
 o Postman (*Body > raw > JSON*).
 
 ```bash
-# ingreso con tarjeta (funciona)
-curl -s -X POST http://localhost:8080/api/accesos/ingreso -H "Content-Type: application/json" -d '{"numeroTarjeta":4000000000000001,"idEstacion":3}'
-# -> {"montoCobrado":2.9,"saldo":22.4,"numeroTransaccion":...}
+# lectura basica
+curl -s http://localhost:8080/api/lineas
 
-# salida de esa tarjeta
-curl -s -X POST http://localhost:8080/api/accesos/salida -H "Content-Type: application/json" -d '{"numeroTarjeta":4000000000000001,"idEstacion":10}'
-
-# tarjeta bloqueada (debe fallar con 400)
-curl -s -X POST http://localhost:8080/api/accesos/ingreso -H "Content-Type: application/json" -d '{"numeroTarjeta":4000000000000007,"idEstacion":3}'
-# -> {"estado":400,"error":"La tarjeta esta BLOQUEADA, no se puede usar","codigoOracle":20081}
-
-# tren en mantenimiento (debe fallar con 400). Cambiar la fecha por la de manana
+# regla de negocio controlada; cambie la fecha por una futura del ambiente demo
 curl -s -X POST http://localhost:8080/api/viajes -H "Content-Type: application/json" -d '{"idRuta":1,"salida":"2026-09-26T16:00:00","codigoTren":"T-104","idConductor":3}'
-
-# programar un viaje valido
-curl -s -X POST http://localhost:8080/api/viajes -H "Content-Type: application/json" -d '{"idRuta":3,"salida":"2026-09-26T15:00:00","codigoTren":"T-106","idConductor":4}'
 ```
+
+Para probar accesos, tome un identificador numerico de tarjeta de los datos demo
+locales sin copiarlo a capturas, tickets o documentacion. Las respuestas de error
+nunca incluyen el numero Oracle ni el mensaje original del driver.
 
 Lo que se hace por la API **si se guarda** en la base. Para volver a los datos limpios ver el README de `database/scripts`.
 
@@ -69,9 +102,9 @@ Lo que se hace por la API **si se guarda** en la base. Para volver a los datos l
 | Codigo en rojo, `Cannot resolve symbol springframework` | Reload de Maven y esperar que termine |
 | `release version 17 not supported` | El SDK es menor a 17 |
 | Errores raros al arrancar con Java 22+ | Cambiar el SDK a 21 |
-| `IO Error: The Network Adapter could not establish the connection` | Oracle o el listener apagados (`services.msc`: `OracleServiceXE` y `OracleOraDB21Home1TNSListener`) |
-| `ORA-12514` | El servicio no es `XEPDB1` |
-| `ORA-01017` | Usuario o clave incorrectos en `application.properties` |
+| La API no logra abrir una conexion | Revise el listener de Oracle 11g y el valor de `DB_URL` |
+| El listener no reconoce SID o servicio | Use el formato SID `:XE` o el formato de servicio `//host:puerto/servicio` que corresponda |
+| Oracle rechaza la sesion | Revise `DB_USERNAME` y `DB_PASSWORD` en el entorno, sin imprimir sus valores |
 | `Port 8080 was already in use` | Cambiar a `server.port=8081` |
 
 ## Estructura
@@ -91,13 +124,29 @@ src/main/java/com/metrony
 - Booleanos como `seDetiene`, `accesible` se mandan `true/false` (en la base se guardan S/N).
 
 ## Errores
-Siempre llegan asi:
+
+Todos los errores controlados usan la misma forma:
+
 ```json
-{ "fecha": "2026-09-25T10:15:00", "estado": 400, "error": "La tarjeta esta BLOQUEADA, no se puede usar", "codigoOracle": 20081 }
+{
+  "timestamp": "2026-09-25T16:15:00Z",
+  "status": 409,
+  "code": "INVALID_STATE_TRANSITION",
+  "message": "El cambio de estado solicitado no esta permitido.",
+  "correlationId": "00000000-0000-0000-0000-000000000000",
+  "fieldErrors": {}
+}
 ```
-- 400: regla de negocio (errores de los procedimientos) o datos invalidos
-- 404: no existe el registro
-- 409: registro duplicado
+
+- `400`: solicitud mal formada o formato de dato invalido.
+- `404`: recurso inexistente reconocido.
+- `409`: duplicado, conflicto, eliminacion referenciada o transicion invalida reconocida.
+- `422`: validacion o regla de negocio reconocida.
+- `500`: fallo no catalogado, con mensaje generico e identificador de correlacion.
+
+El catalogo solo traduce codigos Oracle y `RAISE_APPLICATION_ERROR` conocidos.
+Nunca se devuelven SQL, nombres de restricciones, clases Java, trazas, detalles de
+conexion, el codigo Oracle ni su mensaje original.
 
 ## Endpoints
 
@@ -195,8 +244,8 @@ Siempre llegan asi:
 | GET | `/api/tarjetas/{numero}/recargas`, `/viajes` | Historial |
 | PATCH | `/api/tarjetas/{numero}/estado` | BLOQUEADA, PERDIDA, CANCELADA, ACTIVA |
 | GET | `/api/tarjetas/alertas` | Bloqueadas, vencidas o sin saldo |
-| POST | `/api/accesos/ingreso` | `{"numeroTarjeta":4000000000000001,"idEstacion":3}` |
-| POST | `/api/accesos/salida` | `{"numeroTarjeta":4000000000000001,"idEstacion":10}` |
+| POST | `/api/accesos/ingreso` | Recibe `numeroTarjeta` e `idEstacion`; use solo datos demo locales |
+| POST | `/api/accesos/salida` | Recibe `numeroTarjeta` e `idEstacion`; use solo datos demo locales |
 | POST | `/api/accesos/boleto` | `{"idEstacion":4}` viaje sin tarjeta |
 | GET | `/api/tarifas?activas=true` | Tarifas |
 | GET/PUT/POST | `/api/tarifas[/{codigo}]` | Si cambia el monto se guarda el historial |

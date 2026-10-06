@@ -97,9 +97,13 @@ SELECT TRUNC(vp.fecha_hora_ingreso) AS fecha,
 
 -- 11. Cuales son las estaciones con mayor flujo de pasajeros?
 SELECT posicion, estacion, distrito, entradas, salidas, flujo_total
-  FROM VW_ESTACIONES_FLUJO
- ORDER BY posicion
- FETCH FIRST 10 ROWS ONLY;
+  FROM (
+        SELECT posicion, estacion, distrito, entradas, salidas, flujo_total
+          FROM VW_ESTACIONES_FLUJO
+         ORDER BY posicion, estacion
+       )
+ WHERE ROWNUM <= 10
+ ORDER BY posicion, estacion;
 
 
 -- 12. Que incidentes permanecen abiertos?
