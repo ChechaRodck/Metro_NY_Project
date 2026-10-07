@@ -142,6 +142,7 @@ function DashboardLayout() {
   const desktopCollapseButtonRef = useRef(null);
   const navigate = useNavigate();
   const location = useLocation();
+  const [topbarPathname, setTopbarPathname] = useState(location.pathname);
 
   const mobileDrawerActive = isMobileSidebar && sidebarOpen;
   const sidebarHidden = isMobileSidebar
@@ -170,10 +171,11 @@ function DashboardLayout() {
     (notification) => notification.unread,
   ).length;
 
-  useEffect(() => {
+  if (topbarPathname !== location.pathname) {
+    setTopbarPathname(location.pathname);
     setSearchOpen(false);
     setNotificationOpen(false);
-  }, [location.pathname]);
+  }
 
   useEffect(() => {
     const mediaQuery = window.matchMedia(MOBILE_SIDEBAR_QUERY);
