@@ -166,9 +166,11 @@ The Dispatch Console treats the interface as a calm, dependable operations room:
 
 Routine screens stay compact and decisive, with precise spacing, restrained interaction, and a clear progression from page heading to summary, filters, and records. Visual intensity is reserved for meaningful state and exceptional entry moments; the login may become more expressive, while the working console remains quiet enough for scanning and decision-making.
 
+Authenticated routes use the **Midnight Dispatch Surface** inside a **Framed Command Chassis**: a centered, rounded operational frame over a deeper Dispatch Navy stage. Solid navy tonal layers separate the visual rail, integrated command bar, and dense workspace without glass effects or decorative ambient movement.
+
 **Key Characteristics:**
 
-- Dark Dispatch Navy navigation paired with bright, low-noise work surfaces.
+- Dark Dispatch Navy navigation paired with restrained midnight work surfaces and high-contrast operational text.
 - Compact Inter typography with small uppercase operational labels and firm numeric emphasis.
 - Signal Blue reserved for action, selection, focus, and information—not ambient decoration.
 - Thin dividers, quiet tonal layering, and restrained shadows supporting dense data.
@@ -199,8 +201,8 @@ The palette combines cool operational neutrals with a single confident blue acti
 
 - **Dispatch Navy** (`dispatch-navy`): The stable sidebar and primary shell anchor.
 - **Dispatch Hover Slate** (`dispatch-hover-slate`): Hover and secondary layering inside the dark shell.
-- **Console Mist** (`console-mist`): The cool application background separating work surfaces without visual noise.
-- **Work Surface** (`work-surface`): Cards, tables, fields, top bars, dialogs, and menus.
+- **Console Mist** (`console-mist`): The cool light reference used where a legacy or exceptional light canvas remains necessary.
+- **Work Surface** (`work-surface`): The light reference surface retained for compatibility; authenticated modules primarily use the darker `--auth-*` tonal layers defined in `global.css`.
 - **Control Ink** (`control-ink`): Primary headings and high-priority values.
 - **Field Ink** (`field-ink`): Strong labels, row identities, and secondary headings.
 - **Muted Copy** (`muted-copy`): Supporting descriptions and routine secondary text.
@@ -215,8 +217,8 @@ The palette combines cool operational neutrals with a single confident blue acti
 
 ## Typography
 
-**Display Font:** Inter with the system sans-serif stack  
-**Body Font:** Inter with the system sans-serif stack  
+**Display Font:** Inter with the system sans-serif stack<br>
+**Body Font:** Inter with the system sans-serif stack<br>
 **Label/Mono Font:** Inter for interface labels; SFMono-Regular, Consolas, or Liberation Mono for credentials and code-like values
 
 **Character:** One practical sans-serif family creates an exact, contemporary control-room voice. Hierarchy comes from size, weight, compact line height, and disciplined letter spacing rather than decorative type pairing.
@@ -237,11 +239,11 @@ The palette combines cool operational neutrals with a single confident blue acti
 
 ## Layout
 
-The authenticated application uses a fixed operational shell: a 270px sticky Dispatch Navy sidebar, an 86px sticky top bar, and a fluid work area capped at 1600px. Desktop modules follow a repeatable vertical rhythm of heading, optional notice, four-column summary grid, tabs or charts, toolbar, and data surface. Primary page gutters are 30px, recurring panel padding is 20px, and adjacent data regions generally use 16–24px gaps.
+On framed desktop layouts, the authenticated application is centered inside an operational chassis capped at 1740px wide and 1000px high, with a 22px radius and responsive outer spacing. A 252px Dispatch Navy visual rail and integrated command bar frame the workspace; long module content scrolls inside `.page-content`. Desktop modules follow a repeatable vertical rhythm of heading, optional notice, summary, tabs or charts, toolbar, and data surface.
 
 Summary metrics use equal-height 112px cards. Dashboard analysis areas use asymmetric two-column grids, while management records use full-width tables with horizontal overflow instead of compressing essential columns. Tables favor 13px by 14px cells, compact 9px headers, and 11px row content.
 
-Responsiveness is a controlled compression of the console. Summary grids collapse from four to two columns around 1100–1200px and to one column at 720px. The sidebar becomes an off-canvas drawer below 900px, search and secondary identity details recede as width tightens, module headings stack, and mobile dialogs become bottom sheets below 640px.
+Responsiveness is a controlled compression of the console. Summary grids collapse from four to two columns around 1100–1200px and to one column at 720px. Below 900px the decorative outer frame is removed, the sidebar becomes an accessible off-canvas drawer, and document scrolling is restored so mobile, short-viewport, and zoomed content remains reachable. Search and secondary identity details recede as width tightens, module headings stack, and mobile dialogs become bottom sheets below 640px.
 
 **The Operational Horizon Rule.** Preserve scan lines, aligned controls, and readable records; collapse structure by priority instead of shrinking dense content past usability.
 
@@ -324,7 +326,7 @@ The blob button is a deliberate entry ritual: Entry Indigo outlines the capsule,
 
 ### Do:
 
-- **Do** preserve the Dispatch Navy shell, Console Mist canvas, and white operational surfaces as the stable hierarchy.
+- **Do** preserve the Dispatch Navy stage, framed midnight chassis, tonal workspace layers, and strong operational contrast as the stable hierarchy.
 - **Do** use Signal Blue consistently for primary action, active navigation, focus, and useful information.
 - **Do** keep status color semantic and reinforce it with readable labels or icons.
 - **Do** preserve compact tables, aligned toolbars, and responsive priority-based collapse.

@@ -24,16 +24,16 @@ Metro NY's core value is the connection of the metro's major administrative and 
 
 ## Operating Context
 
-The current product is a Spanish-language academic demonstration. Administrators and operations staff sign in with demo credentials, monitor an operational summary, and work across modules for the metro network, operations and schedules, trains and wagons, personnel, passengers and cards, maintenance, incidents, and reports.
+The current product is a Spanish-language academic demonstration. Administrators and operations staff authenticate through the Java backend, receive a signed JWT access token, monitor an operational summary, and work across modules for the metro network, operations and schedules, trains and wagons, personnel, passengers and cards, maintenance, incidents, and reports.
 
-All current data and operational states are demonstrative and must not be represented as live MTA or real-world transit information.
+Authentication and the line catalogue are the first real backend integrations: the frontend uses `POST /api/auth/login` and protected `GET /api/lineas`, backed by the Oracle environment validated with Oracle XE 21c. Records and operational states in the remaining frontend modules are still demonstrative until their endpoints are connected, and none of the application data may be represented as live MTA or real-world transit information.
 
 ## Capabilities and Constraints
 
 - Preserve the existing React and Vite frontend.
-- Preserve the Oracle Database 11g data model in `docs/Script_Metro_NY.sql` and its related model artifacts.
-- The Java backend is still under development; future connected functionality must account for that incomplete integration.
-- Authentication currently uses demo-only credentials and browser-stored demo sessions.
+- Preserve the Oracle Database 11g-compatible data model and migration constraints while development and smoke testing use Oracle XE 21c.
+- The Java backend now provides JWT authentication and protected read access to lines; integration of the remaining management modules is still under development.
+- Authentication uses backend-validated credentials, a signed JWT, in-memory state, and `sessionStorage` for restoration within the current browser tab.
 - The present scope is the administrative and operational frontend. The passenger-facing interface and live network simulation remain planned work.
 - The interface language is Spanish.
 - Responsive behavior is a product requirement across practical web viewport sizes.
@@ -47,10 +47,11 @@ The application is an independent academic project with no official affiliation 
 ## Evidence on Hand
 
 - The implemented React/Vite administrative interface is in `frontend/`.
-- Demo authentication behavior and credentials are defined in `frontend/src/auth.js`.
-- Demonstration records for the dashboard and management modules are stored in `frontend/src/data/`.
+- Frontend session handling is defined in `frontend/src/auth.js`; API requests are centralized under `frontend/src/services/`.
+- `POST /api/auth/login` and `GET /api/lineas` are connected to the Java backend. Line mutations remain disabled in the frontend.
+- Demonstration records for the dashboard and management modules other than the connected line catalogue are stored in `frontend/src/data/`.
 - The Oracle 11g schema is in `docs/Script_Metro_NY.sql`, with supporting data-model artifacts in `docs/Modelo_Metro_NY/`.
-- The Java backend scaffold is in `backend/` and is not yet a completed application integration.
+- The Java backend in `backend/` provides the secured authentication and line-reading vertical slice; broader frontend integration remains pending.
 - There is no evidence of official MTA affiliation, live transit feeds, production users, testimonials, or real operational results; future work must not fabricate any of these.
 
 ## Product Principles
