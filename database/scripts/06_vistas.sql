@@ -198,6 +198,29 @@ SELECT e.id_estacion,
 
 
 -- Certificaciones vencidas o que vencen en los proximos 60 dias
+-- Administracion de usuarios sin hashes ni tokens.
+CREATE OR REPLACE VIEW VW_USUARIOS_ADMIN AS
+SELECT u.id_usuario,
+       u.nombre_usuario,
+       u.nombre_mostrar,
+       u.estado,
+       u.intentos_fallidos,
+       u.bloqueado_hasta,
+       u.ultimo_ingreso_exitoso,
+       u.credenciales_actualizadas_en,
+       u.creado_en,
+       u.actualizado_en,
+       u.version,
+       LISTAGG(r.codigo, ',') WITHIN GROUP (ORDER BY r.codigo) AS roles
+  FROM USUARIO u
+  LEFT JOIN USUARIO_ROL ur ON ur.id_usuario = u.id_usuario
+  LEFT JOIN ROL r ON r.id_rol = ur.id_rol
+ GROUP BY u.id_usuario, u.nombre_usuario, u.nombre_mostrar, u.estado,
+          u.intentos_fallidos, u.bloqueado_hasta, u.ultimo_ingreso_exitoso,
+          u.credenciales_actualizadas_en, u.creado_en, u.actualizado_en, u.version;
+
+
+-- Certificaciones vencidas o que vencen en los proximos 60 dias
 CREATE OR REPLACE VIEW VW_CERTIFICACIONES_POR_VENCER AS
 SELECT c.id_certificacion,
        c.id_empleado,

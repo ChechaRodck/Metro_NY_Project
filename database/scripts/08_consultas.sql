@@ -140,3 +140,12 @@ SELECT ot.numero_orden, e.id_empleado, e.nombres || ' ' || e.apellidos AS tecnic
   JOIN EMPLEADO e ON e.id_empleado = ot.id_empleado
  WHERE ot.numero_orden = :numero_orden
  ORDER BY ot.rol DESC, tecnico;
+
+
+-- 16. Catalogo y estado administrativo de seguridad (sin hashes ni tokens)
+SELECT codigo, nombre, estado, creado_en FROM ROL ORDER BY codigo;
+
+SELECT nombre_usuario, nombre_mostrar, estado, intentos_fallidos,
+       bloqueado_hasta, ultimo_ingreso_exitoso, roles, version
+  FROM VW_USUARIOS_ADMIN
+ ORDER BY nombre_usuario;

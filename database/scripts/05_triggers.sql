@@ -253,6 +253,71 @@ END;
 -- Los registros historicos no se eliminan fisicamente
 -- -------------------------------------------------------------
 
+-- El codigo de un rol y el nombre normalizado de usuario son identidades inmutables.
+CREATE OR REPLACE TRIGGER TRG_ROL_CODIGO_INMUTABLE
+BEFORE UPDATE OF codigo ON ROL
+FOR EACH ROW
+BEGIN
+  IF :NEW.codigo <> :OLD.codigo THEN
+    RAISE_APPLICATION_ERROR(-20176, 'El codigo de rol no se puede modificar');
+  END IF;
+END;
+/
+
+CREATE OR REPLACE TRIGGER TRG_USUARIO_GESTION
+BEFORE UPDATE ON USUARIO
+FOR EACH ROW
+BEGIN
+  IF :NEW.nombre_usuario <> :OLD.nombre_usuario THEN
+    RAISE_APPLICATION_ERROR(-20177, 'El nombre de usuario no se puede modificar');
+  END IF;
+  :NEW.actualizado_en := SYS_EXTRACT_UTC(SYSTIMESTAMP);
+  :NEW.version := :OLD.version + 1;
+  IF :NEW.hash_contrasena <> :OLD.hash_contrasena THEN
+    :NEW.credenciales_actualizadas_en := SYS_EXTRACT_UTC(SYSTIMESTAMP);
+  END IF;
+END;
+/
+
+CREATE OR REPLACE TRIGGER TRG_BIT_USUARIO_ESTADO
+AFTER UPDATE OF estado ON USUARIO
+FOR EACH ROW
+WHEN (NEW.estado <> OLD.estado)
+BEGIN
+  SP_BITACORA('USUARIO', TO_CHAR(:NEW.id_usuario), 'CAMBIO_ESTADO', :OLD.estado, :NEW.estado);
+END;
+/
+
+CREATE OR REPLACE TRIGGER TRG_BIT_USUARIO_ROL
+AFTER INSERT OR DELETE ON USUARIO_ROL
+FOR EACH ROW
+DECLARE
+  v_codigo ROL.codigo%TYPE;
+BEGIN
+  SELECT codigo INTO v_codigo FROM ROL WHERE id_rol = NVL(:NEW.id_rol, :OLD.id_rol);
+  IF INSERTING THEN
+    SP_BITACORA('USUARIO_ROL', TO_CHAR(:NEW.id_usuario), 'ASIGNAR_ROL', NULL, v_codigo,
+                'CAMBIO', 'Asignado por ' || NVL(:NEW.asignado_por, USER));
+  ELSE
+    SP_BITACORA('USUARIO_ROL', TO_CHAR(:OLD.id_usuario), 'RETIRAR_ROL', v_codigo, NULL);
+  END IF;
+END;
+/
+
+CREATE OR REPLACE TRIGGER TRG_NO_BORRAR_USUARIO
+BEFORE DELETE ON USUARIO
+BEGIN
+  RAISE_APPLICATION_ERROR(-20178, 'Los usuarios se deshabilitan y no se eliminan');
+END;
+/
+
+CREATE OR REPLACE TRIGGER TRG_NO_BORRAR_ROL
+BEFORE DELETE ON ROL
+BEGIN
+  RAISE_APPLICATION_ERROR(-20178, 'Los roles se desactivan y no se eliminan');
+END;
+/
+
 CREATE OR REPLACE TRIGGER TRG_NO_BORRAR_VIAJE_PASAJERO
 BEFORE DELETE ON VIAJE_PASAJERO
 BEGIN

@@ -7,7 +7,7 @@
 BEGIN
   FOR o IN (SELECT object_name, object_type
               FROM USER_OBJECTS
-             WHERE object_type IN ('VIEW','PROCEDURE','FUNCTION','SEQUENCE')) LOOP
+             WHERE object_type IN ('VIEW','PROCEDURE','FUNCTION','TRIGGER','SEQUENCE')) LOOP
     EXECUTE IMMEDIATE 'DROP ' || o.object_type || ' ' || o.object_name;
   END LOOP;
 

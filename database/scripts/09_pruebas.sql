@@ -441,6 +441,41 @@ END;
 /
 
 -- ultimos movimientos de la bitacora
+PROMPT ===== AUTENTICACION Y ROLES =====
+
+-- 38. Alta, reemplazo de roles, contador y restablecimiento; todo se revierte al final.
+DECLARE
+  v_id NUMBER;
+  v_bloqueado TIMESTAMP;
+  v_creado VARCHAR2(1);
+  v_hash VARCHAR2(60) := '$2a$12$' || RPAD('A', 53, 'A');
+BEGIN
+  SP_AUTH_CREAR_USUARIO('prueba.seguridad', 'Prueba de seguridad', v_hash,
+                        'OPERACIONES,CONSULTA', 'pruebas', v_id);
+  SP_AUTH_REEMPLAZAR_ROLES('prueba.seguridad', 'MANTENIMIENTO', 'pruebas');
+  SP_AUTH_REGISTRAR_FALLO(v_id, v_bloqueado);
+  SP_AUTH_REGISTRAR_EXITO(v_id);
+  SP_AUTH_CAMBIAR_ESTADO('prueba.seguridad', 'DESHABILITADO', 'pruebas');
+  SP_AUTH_CAMBIAR_HASH('prueba.seguridad', '$2b$12$' || RPAD('B', 53, 'B'), 'pruebas');
+  SP_AUTH_BOOTSTRAP_ADMIN('no.debe.crearse', 'No creado', v_hash, 'pruebas', v_id, v_creado);
+  IF v_creado <> 'N' THEN RAISE_APPLICATION_ERROR(-20999, 'Bootstrap reemplazo usuarios existentes'); END IF;
+  DBMS_OUTPUT.PUT_LINE('38. OK: ciclo de seguridad y bootstrap protegido');
+END;
+/
+
+-- 39. [ERROR ESPERADO] el nombre de usuario es inmutable.
+BEGIN
+  UPDATE USUARIO SET nombre_usuario = 'nombre.cambiado' WHERE nombre_usuario = 'prueba.seguridad';
+  DBMS_OUTPUT.PUT_LINE('39. NO DEBIO PASAR');
+EXCEPTION WHEN OTHERS THEN DBMS_OUTPUT.PUT_LINE('39. Error esperado: ' || SQLERRM);
+END;
+/
+
+-- La vista administrativa nunca proyecta hash_contrasena.
+SELECT nombre_usuario, nombre_mostrar, estado, roles FROM VW_USUARIOS_ADMIN
+ WHERE nombre_usuario = 'prueba.seguridad';
+
+-- ultimos movimientos de la bitacora
 SELECT fecha, tabla, id_registro, accion, valor_anterior, valor_nuevo, tipo, detalle
   FROM (
         SELECT id_bitacora, fecha, tabla, id_registro, accion,
