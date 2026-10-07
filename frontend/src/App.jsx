@@ -1,7 +1,7 @@
-import { Navigate, Route, Routes } from "react-router";
+import { Navigate, Route, Routes, useLocation } from "react-router";
 import DashboardLayout from "./layout/DashboardLayout";
-import { isAuthenticated } from "./auth";
-import Login from "./pages/login";
+import { useAuthSession } from "./auth";
+import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import NetworkManagement from "./pages/NetworkManagement";
 import OperationsManagement from "./pages/OperationsManagement";
@@ -13,15 +13,38 @@ import IncidentManagement from "./pages/IncidentManagement";
 import ReportsManagement from "./pages/ReportsManagement";
 
 function ProtectedLayout() {
-  return isAuthenticated() ? (
+  const session = useAuthSession();
+  const location = useLocation();
+  const returnTo = `${location.pathname}${location.search}${location.hash}`;
+
+  return session ? (
     <DashboardLayout />
   ) : (
-    <Navigate to="/login" replace />
+    <Navigate to="/login" replace state={{ returnTo }} />
   );
 }
 
+function getSafeReturnTo(returnTo) {
+  if (
+    typeof returnTo !== "string" ||
+    !returnTo.startsWith("/") ||
+    returnTo.startsWith("//") ||
+    returnTo.startsWith("/login")
+  ) {
+    return "/";
+  }
+
+  return returnTo;
+}
+
 function LoginRoute() {
-  return isAuthenticated() ? <Navigate to="/" replace /> : <Login />;
+  const session = useAuthSession();
+  const location = useLocation();
+  return session ? (
+    <Navigate to={getSafeReturnTo(location.state?.returnTo)} replace />
+  ) : (
+    <Login />
+  );
 }
 
 function App() {

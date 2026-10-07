@@ -1,14 +1,15 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router";
 import {
   CheckCircle2,
   Eye,
   EyeOff,
   LockKeyhole,
-  Mail,
+  UserRound,
 } from "lucide-react";
-import { createDemoSession, demoCredentials } from "../auth";
+import { createAuthSession } from "../auth";
 import useMotionPreferences from "../hooks/useMotionPreferences";
+import { ApiError } from "../services/apiClient";
+import { login } from "../services/authService";
 import "../styles/login.css";
 
 const NETWORK_DEPTHS = [
@@ -22,8 +23,35 @@ function clamp(value, minimum, maximum) {
   return Math.min(Math.max(value, minimum), maximum);
 }
 
+function getLoginErrorMessage(error) {
+  if (!(error instanceof ApiError)) {
+    return "El servicio de autenticación devolvió una respuesta no válida.";
+  }
+
+  if (error.status === 0) {
+    return "No fue posible conectar con el servicio. Verifica que el backend esté disponible.";
+  }
+
+  if (error.status === 401) {
+    return "El usuario o la contraseña no son correctos.";
+  }
+
+  if (error.status === 429) {
+    const retryAfter = Number(error.retryAfter);
+    return Number.isFinite(retryAfter) && retryAfter > 0
+      ? `Se alcanzó el límite de intentos. Espera ${retryAfter} segundos antes de reintentar.`
+      : "Se alcanzó el límite de intentos. Espera antes de reintentar.";
+  }
+
+  if (error.status === 400) {
+    return "Revisa el usuario y la contraseña e inténtalo de nuevo.";
+  }
+
+  return "No fue posible validar el acceso. Inténtalo de nuevo más tarde.";
+}
+
 function Login() {
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [rememberSession, setRememberSession] = useState(true);
@@ -31,7 +59,6 @@ function Login() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const brandPanelRef = useRef(null);
   const { allowsPointerMotion } = useMotionPreferences();
-  const navigate = useNavigate();
 
   useEffect(() => {
     const brandPanel = brandPanelRef.current;
@@ -176,34 +203,28 @@ function Login() {
     };
   }, [allowsPointerMotion]);
 
-  function fillDemoCredentials() {
-    setEmail(demoCredentials.email);
-    setPassword(demoCredentials.password);
-    setError("");
-  }
-
   async function handleSubmit(event) {
     event.preventDefault();
     setError("");
 
-    if (!email.trim() || !password) {
-      setError("Ingresa el correo y la contraseña para continuar.");
-      return;
-    }
-
-    const validEmail =
-      email.trim().toLowerCase() === demoCredentials.email.toLowerCase();
-    const validPassword = password === demoCredentials.password;
-
-    if (!validEmail || !validPassword) {
-      setError("Las credenciales no coinciden con el acceso de demostración.");
+    if (!username.trim() || !password) {
+      setError("Ingresa el usuario y la contraseña para continuar.");
       return;
     }
 
     setIsSubmitting(true);
-    await new Promise((resolve) => window.setTimeout(resolve, 650));
-    createDemoSession(rememberSession);
-    navigate("/", { replace: true });
+
+    try {
+      const loginResponse = await login({
+        username: username.trim(),
+        password,
+      });
+      createAuthSession(loginResponse, rememberSession);
+    } catch (loginError) {
+      setError(getLoginErrorMessage(loginError));
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -302,8 +323,8 @@ function Login() {
           <div className="login-system-status">
             <span />
             <div>
-              <strong>Sistema operativo</strong>
-              <small>Todos los servicios de demostración activos</small>
+              <strong>Acceso protegido</strong>
+              <small>Credenciales verificadas por el servicio de autenticación</small>
             </div>
           </div>
         </section>
@@ -316,18 +337,28 @@ function Login() {
               <p>Ingresa tus credenciales para acceder al centro de control.</p>
             </div>
 
-            <form className="login-form" onSubmit={handleSubmit} noValidate>
+            <form
+              className="login-form"
+              onSubmit={handleSubmit}
+              aria-busy={isSubmitting}
+              noValidate
+            >
               <label className="login-field">
-                <span>Correo institucional</span>
+                <span>Usuario</span>
                 <div className="login-input">
-                  <Mail size={19} aria-hidden="true" />
+                  <UserRound size={19} aria-hidden="true" />
                   <input
-                    type="email"
+                    type="text"
+                    name="username"
                     autoComplete="username"
-                    placeholder="nombre@metrony.com"
-                    value={email}
+                    placeholder="Ingresa tu usuario"
+                    value={username}
+                    maxLength={60}
+                    required
+                    disabled={isSubmitting}
+                    aria-describedby={error ? "login-error" : undefined}
                     onChange={(event) => {
-                      setEmail(event.target.value);
+                      setUsername(event.target.value);
                       setError("");
                     }}
                   />
@@ -340,9 +371,14 @@ function Login() {
                   <LockKeyhole size={19} aria-hidden="true" />
                   <input
                     type={showPassword ? "text" : "password"}
+                    name="password"
                     autoComplete="current-password"
                     placeholder="Ingresa tu contraseña"
                     value={password}
+                    maxLength={128}
+                    required
+                    disabled={isSubmitting}
+                    aria-describedby={error ? "login-error" : undefined}
                     onChange={(event) => {
                       setPassword(event.target.value);
                       setError("");
@@ -354,6 +390,7 @@ function Login() {
                     aria-label={
                       showPassword ? "Ocultar contraseña" : "Mostrar contraseña"
                     }
+                    disabled={isSubmitting}
                     onClick={() => setShowPassword((visible) => !visible)}
                   >
                     {showPassword ? <EyeOff size={19} /> : <Eye size={19} />}
@@ -366,22 +403,15 @@ function Login() {
                   <input
                     type="checkbox"
                     checked={rememberSession}
+                    disabled={isSubmitting}
                     onChange={(event) => setRememberSession(event.target.checked)}
                   />
-                  <span>Recordar sesión</span>
+                  <span>Mantener sesión en esta pestaña</span>
                 </label>
-
-                <button
-                  type="button"
-                  className="login-demo-fill"
-                  onClick={fillDemoCredentials}
-                >
-                  Usar acceso de demostración
-                </button>
               </div>
 
               {error && (
-                <div className="login-error" role="alert">
+                <div className="login-error" id="login-error" role="alert">
                   {error}
                 </div>
               )}
@@ -395,9 +425,9 @@ function Login() {
                   {isSubmitting ? (
                     "Verificando acceso..."
                   ) : (
-                    <>
-                      Ingresar al sistema
-                      <CheckCircle2 size={18} />
+                      <>
+                        Ingresar al sistema
+                        <CheckCircle2 size={18} aria-hidden="true" />
                     </>
                   )}
                 </span>
@@ -412,11 +442,9 @@ function Login() {
                 </span>
               </button>
 
-              <div className="login-demo-note">
-                <strong>Credenciales de demostración</strong>
-                <span>{demoCredentials.email}</span>
-                <span>{demoCredentials.password}</span>
-              </div>
+              <p className="login-session-note">
+                La sesión se limita a esta pestaña y se elimina al cerrar sesión o al vencer el acceso.
+              </p>
             </form>
 
             <p className="login-card__footer">

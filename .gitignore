@@ -9,5 +9,10 @@ target/
 # Dependencias de Frontend
 node_modules/
 
+# Configuracion local del Frontend
+frontend/.env
+frontend/.env.*
+!frontend/.env.example
+
 # Archivos temporales de Oracle Data Modeler
 *.bak

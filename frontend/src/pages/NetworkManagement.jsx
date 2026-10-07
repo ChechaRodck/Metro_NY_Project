@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Accessibility,
   ArrowRight,
@@ -6,7 +6,9 @@ import {
   CircleCheck,
   CirclePlus,
   Clock3,
+  LockKeyhole,
   MapPinned,
+  RefreshCw,
   Route as RouteIcon,
   Search,
   TrainFront,
@@ -18,14 +20,14 @@ import ConfirmDeleteModal from "../components/ConfirmDeleteModal";
 import DeleteRecordAction, {
   DeleteRecordNotice,
 } from "../components/DeleteRecordAction";
-import useDeleteRecord, {
-  getSelectionAfterDelete,
-} from "../hooks/useDeleteRecord";
+import useDeleteRecord from "../hooks/useDeleteRecord";
 import {
-  metroLines,
+  metroLines as demoLines,
   metroRoutes,
   metroStations,
 } from "../data/networkData";
+import { ApiError } from "../services/apiClient";
+import { getLines } from "../services/lineService";
 import "../styles/network.css";
 
 const entityTabs = [
@@ -35,19 +37,18 @@ const entityTabs = [
 ];
 
 const statusOptions = {
-  lines: ["Todos", "Operativa", "Con demoras", "Mantenimiento"],
+  lines: ["Todos", "Operativa", "Suspendida", "Inactiva"],
   stations: ["Todos", "Operativa", "Mantenimiento"],
   routes: ["Todos", "Activa", "Con demoras", "Servicio parcial"],
 };
 
 const actionLabels = {
-  lines: "Registrar línea",
   stations: "Registrar estación",
   routes: "Registrar ruta",
 };
 
 const statusPriority = {
-  lines: { Mantenimiento: 0, "Con demoras": 1, Operativa: 2 },
+  lines: { Inactiva: 0, Suspendida: 1, Operativa: 2 },
   stations: { Mantenimiento: 0, Operativa: 1 },
   routes: { "Servicio parcial": 0, "Con demoras": 1, Activa: 2 },
 };
@@ -56,6 +57,8 @@ const statusPresentation = {
   Operativa: { tone: "success", icon: CircleCheck },
   Activa: { tone: "success", icon: CircleCheck },
   "Con demoras": { tone: "warning", icon: TriangleAlert },
+  Suspendida: { tone: "warning", icon: TriangleAlert },
+  Inactiva: { tone: "danger", icon: Wrench },
   Mantenimiento: { tone: "danger", icon: Wrench },
   "Servicio parcial": { tone: "danger", icon: Wrench },
 };
@@ -135,7 +138,24 @@ function getLineStyle(line) {
 }
 
 function formatDistance(value) {
+  if (value === null) return "No registrada";
   return `${value.toLocaleString("es-ES", { maximumFractionDigits: 1 })} km`;
+}
+
+function getLinesErrorMessage(error) {
+  if (error instanceof ApiError) {
+    if (error.status === 403) {
+      return "Tu sesión está activa, pero no tiene permiso para consultar las líneas.";
+    }
+
+    if (error.status === 0) {
+      return "No fue posible conectar con el servicio de líneas.";
+    }
+
+    return error.message;
+  }
+
+  return "El servicio devolvió datos de líneas con un formato no compatible.";
 }
 
 function NetworkStatus({ status }) {
@@ -204,11 +224,39 @@ function NetworkManagement() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("Todos");
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [selectedLineId, setSelectedLineId] = useState("L");
-  const [lines, setLines] = useState(metroLines);
+  const [selectedLineId, setSelectedLineId] = useState("");
+  const [lines, setLines] = useState([]);
+  const [lineRequest, setLineRequest] = useState({
+    status: "loading",
+    error: "",
+  });
+  const [lineRequestVersion, setLineRequestVersion] = useState(0);
   const [stations, setStations] = useState(metroStations);
   const [routes, setRoutes] = useState(metroRoutes);
   const tabRefs = useRef([]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    getLines({ signal: controller.signal })
+      .then((loadedLines) => {
+        setLines(loadedLines);
+        setLineRequest({ status: "success", error: "" });
+      })
+      .catch((requestError) => {
+        if (requestError instanceof DOMException && requestError.name === "AbortError") {
+          return;
+        }
+
+        setLines([]);
+        setLineRequest({
+          status: "error",
+          error: getLinesErrorMessage(requestError),
+        });
+      });
+
+    return () => controller.abort();
+  }, [lineRequestVersion]);
 
   const recordsByType = {
     lines,
@@ -245,15 +293,8 @@ function NetworkManagement() {
     ? orderedRecords.findIndex((line) => line.id === effectiveSelectedLine.id)
     : -1;
 
-  const selectedRoutes = effectiveSelectedLine
-    ? routes.filter((route) => route.line === effectiveSelectedLine.id)
-    : [];
-  const selectedStations = effectiveSelectedLine
-    ? stations.filter((station) => station.lines.includes(effectiveSelectedLine.id))
-    : [];
-
   const lineAttentionCount = lines.filter(
-    (line) => line.status !== "Operativa",
+    (line) => line.hasAttention,
   ).length;
   const accessibleStationCount = stations.filter(
     (station) => station.accessible,
@@ -295,14 +336,6 @@ function NetworkManagement() {
   }
 
   function handleCreateRecord(newRecord) {
-    if (activeTab === "lines") {
-      setLines((currentLines) => [...currentLines, newRecord]);
-
-      if (recordMatches(newRecord, searchTerm, statusFilter)) {
-        setSelectedLineId(newRecord.id);
-      }
-    }
-
     if (activeTab === "stations") {
       setStations((currentStations) => [...currentStations, newRecord]);
     }
@@ -316,16 +349,6 @@ function NetworkManagement() {
 
   function handleDeleteRecord({ id }) {
     if (activeTab === "lines") {
-      const selectedId = effectiveSelectedLine?.id ?? selectedLineId;
-      const nextSelection = getSelectionAfterDelete(
-        orderedRecords,
-        id,
-        selectedId,
-      );
-      setLines((currentLines) =>
-        currentLines.filter((line) => line.id !== id),
-      );
-      if (selectedId === id) setSelectedLineId(nextSelection ?? "");
       return;
     }
 
@@ -342,7 +365,15 @@ function NetworkManagement() {
   }
 
   function lineForId(lineId) {
-    return lines.find((line) => line.id === lineId);
+    return (
+      lines.find((line) => line.id === lineId) ??
+      demoLines.find((line) => line.id === lineId)
+    );
+  }
+
+  function retryLines() {
+    setLineRequest({ status: "loading", error: "" });
+    setLineRequestVersion((version) => version + 1);
   }
 
   return (
@@ -350,8 +381,17 @@ function NetworkManagement() {
       <header className="network-heading">
         <div className="network-heading__copy">
           <div className="network-context" aria-label="Contexto de los datos">
-            <span>Escenario simulado</span>
-            <span>Datos de demostración</span>
+            {activeTab === "lines" ? (
+              <>
+                <span>Fuente: API protegida</span>
+                <span>Modo solo lectura</span>
+              </>
+            ) : (
+              <>
+                <span>Escenario simulado</span>
+                <span>Datos de demostración</span>
+              </>
+            )}
           </div>
           <p className="network-heading__eyebrow">Mesa de topología de rutas</p>
           <h2 id="network-page-title">Red y topología registrada</h2>
@@ -360,14 +400,21 @@ function NetworkManagement() {
           </p>
         </div>
 
-        <button
-          type="button"
-          className="network-primary-button"
-          onClick={() => setIsFormOpen(true)}
-        >
-          <CirclePlus size={17} aria-hidden="true" />
-          {actionLabels[activeTab]}
-        </button>
+        {activeTab === "lines" ? (
+          <div className="network-read-only-control" role="note">
+            <LockKeyhole size={16} aria-hidden="true" />
+            Líneas en modo consulta
+          </div>
+        ) : (
+          <button
+            type="button"
+            className="network-primary-button"
+            onClick={() => setIsFormOpen(true)}
+          >
+            <CirclePlus size={17} aria-hidden="true" />
+            {actionLabels[activeTab]}
+          </button>
+        )}
       </header>
 
       <DeleteRecordNotice
@@ -410,9 +457,42 @@ function NetworkManagement() {
           role="tabpanel"
           aria-labelledby="network-tab-lines"
           hidden={activeTab !== "lines"}
+          aria-busy={lineRequest.status === "loading"}
           tabIndex={0}
         >
-          {activeTab === "lines" && (
+          {activeTab === "lines" && lineRequest.status === "loading" && (
+            <div className="network-request-state" role="status" aria-live="polite">
+              <RefreshCw size={25} aria-hidden="true" />
+              <strong>Cargando líneas registradas</strong>
+              <span>Consultando la fuente operativa protegida.</span>
+            </div>
+          )}
+
+          {activeTab === "lines" && lineRequest.status === "error" && (
+            <div className="network-request-state network-request-state--error" role="alert">
+              <TriangleAlert size={25} aria-hidden="true" />
+              <strong>No se pudieron cargar las líneas</strong>
+              <span>{lineRequest.error}</span>
+              <button type="button" onClick={retryLines}>
+                <RefreshCw size={14} aria-hidden="true" />
+                Reintentar consulta
+              </button>
+            </div>
+          )}
+
+          {activeTab === "lines" &&
+            lineRequest.status === "success" &&
+            lines.length === 0 && (
+              <div className="network-request-state" role="status">
+                <TrainFront size={27} aria-hidden="true" />
+                <strong>No hay líneas registradas</strong>
+                <span>El servicio respondió correctamente sin registros disponibles.</span>
+              </div>
+            )}
+
+          {activeTab === "lines" &&
+            lineRequest.status === "success" &&
+            lines.length > 0 && (
             <div className="network-lines-desk">
             <aside className="network-line-index" aria-labelledby="network-line-index-title">
               <div className="network-line-index__header">
@@ -421,7 +501,8 @@ function NetworkManagement() {
                   <h3 id="network-line-index-title">Índice de líneas</h3>
                 </div>
                 <p>
-                  {lines.length} registradas · {lineAttentionCount} requieren atención
+                  {lines.length} registradas · {lineAttentionCount}{" "}
+                  {lineAttentionCount === 1 ? "requiere" : "requieren"} atención
                 </p>
               </div>
 
@@ -463,16 +544,8 @@ function NetworkManagement() {
               ) : (
                 <div className="network-empty network-empty--compact">
                   <Search size={22} aria-hidden="true" />
-                  <strong>
-                    {lines.length === 0
-                      ? "No hay líneas disponibles"
-                      : "Sin líneas coincidentes"}
-                  </strong>
-                  <span>
-                    {lines.length === 0
-                      ? "Los registros originales reaparecerán al recargar."
-                      : "Ajusta la búsqueda o el filtro de estado."}
-                  </span>
+                  <strong>Sin líneas coincidentes</strong>
+                  <span>Ajusta la búsqueda o el filtro de estado.</span>
                 </div>
               )}
             </aside>
@@ -504,14 +577,11 @@ function NetworkManagement() {
                     <NetworkStatus status={effectiveSelectedLine.status} />
                   </header>
 
-                  <div className="record-delete-toolbar">
-                    <DeleteRecordAction
-                      id={effectiveSelectedLine.id}
-                      label={`Línea ${effectiveSelectedLine.id}: ${effectiveSelectedLine.name}`}
-                      record={effectiveSelectedLine}
-                      onRequest={deletion.requestDelete}
-                      variant="labeled"
-                    />
+                  <div className="network-read-only-notice" role="note">
+                    <LockKeyhole size={15} aria-hidden="true" />
+                    <span>
+                      Consulta protegida. Crear, editar y eliminar líneas todavía no está disponible.
+                    </span>
                   </div>
 
                   <section className="network-terminal-section" aria-labelledby="terminal-section-title">
@@ -558,92 +628,33 @@ function NetworkManagement() {
                     </div>
                   </dl>
 
-                  <section className="network-detail-section" aria-labelledby="route-section-title">
+                  <section className="network-detail-section" aria-labelledby="line-operation-title">
                     <div className="network-section-heading">
                       <div>
-                        <span className="network-section-label">Configuración operativa</span>
-                        <h4 id="route-section-title">Rutas configuradas</h4>
+                        <span className="network-section-label">Lecturas del servicio</span>
+                        <h4 id="line-operation-title">Situación operativa registrada</h4>
                       </div>
-                      <span className="network-record-count">
-                        {selectedRoutes.length} {selectedRoutes.length === 1 ? "registro" : "registros"}
-                      </span>
+                      <span className="network-record-count">Solo lectura</span>
                     </div>
 
-                    {selectedRoutes.length > 0 ? (
-                      <ul className="network-route-list">
-                        {selectedRoutes.map((route) => (
-                          <li key={route.id}>
-                            <div className="network-route-list__identity">
-                              <strong>{route.id}</strong>
-                              <span>{route.direction}</span>
-                            </div>
-                            <dl>
-                              <div>
-                                <dt>Distancia</dt>
-                                <dd>{formatDistance(route.distance)}</dd>
-                              </div>
-                              <div>
-                                <dt>Duración estimada</dt>
-                                <dd>{route.duration} min</dd>
-                              </div>
-                            </dl>
-                            <NetworkStatus status={route.status} />
-                          </li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <div className="network-missing-route">
-                        <RouteIcon size={18} aria-hidden="true" />
-                        <div>
-                          <strong>Sin ruta configurada</strong>
-                          <span>No existe una ruta registrada para esta línea en los datos de demostración.</span>
-                        </div>
-                      </div>
-                    )}
-                  </section>
-
-                  <section className="network-detail-section" aria-labelledby="station-section-title">
-                    <div className="network-section-heading">
+                    <dl className="network-operational-readings">
                       <div>
-                        <span className="network-section-label">Muestra de registros asociados</span>
-                        <h4 id="station-section-title">Estaciones vinculadas</h4>
+                        <dt>Rutas activas</dt>
+                        <dd>{effectiveSelectedLine.activeRoutes}</dd>
                       </div>
-                      <span className="network-record-count">
-                        {selectedStations.length} {selectedStations.length === 1 ? "registro" : "registros"}
-                      </span>
-                    </div>
-                    <p className="network-association-note">
-                      Esta muestra no representa el orden ni el recorrido completo de la línea.
-                    </p>
-
-                    {selectedStations.length > 0 ? (
-                      <ul className="network-station-list">
-                        {selectedStations.map((station) => (
-                          <li key={station.id}>
-                            <div className="network-station-list__identity">
-                              <span className="station-icon">
-                                <Building2 size={16} aria-hidden="true" />
-                              </span>
-                              <div>
-                                <strong>{station.name}</strong>
-                                <span>{station.id} · {station.borough}</span>
-                              </div>
-                            </div>
-                            <span>{station.platforms} plataformas</span>
-                            <span>{station.accesses} accesos</span>
-                            <span className={station.accessible ? "accessibility-label accessibility-label--available" : "accessibility-label"}>
-                              <Accessibility size={14} aria-hidden="true" />
-                              {station.accessible ? "Accesible" : "Sin accesibilidad"}
-                            </span>
-                            <NetworkStatus status={station.status} />
-                          </li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <p className="network-empty-association">
-                        No hay estaciones asociadas a esta línea en la muestra de datos.
-                      </p>
-                    )}
+                      <div>
+                        <dt>Rutas afectadas</dt>
+                        <dd>{effectiveSelectedLine.affectedRoutes}</dd>
+                      </div>
+                      <div>
+                        <dt>Viajes en curso</dt>
+                        <dd>{effectiveSelectedLine.tripsInProgress}</dd>
+                      </div>
+                      <div>
+                        <dt>Incidentes abiertos</dt>
+                        <dd>{effectiveSelectedLine.openIncidents}</dd>
+                      </div>
+                    </dl>
                   </section>
                 </>
               ) : (
