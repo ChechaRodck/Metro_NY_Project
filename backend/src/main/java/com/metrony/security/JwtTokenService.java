@@ -2,6 +2,7 @@ package com.metrony.security;
 
 import com.metrony.auth.AuthUser;
 import com.metrony.config.JwtProperties;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.oauth2.jwt.JwsHeader;
 import org.springframework.security.oauth2.jwt.JwtClaimsSet;
@@ -19,6 +20,7 @@ public class JwtTokenService {
     private final JwtProperties properties;
     private final Clock clock;
 
+    @Autowired
     public JwtTokenService(JwtEncoder encoder, JwtProperties properties) {
         this(encoder, properties, Clock.systemUTC());
     }

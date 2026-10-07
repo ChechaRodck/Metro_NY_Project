@@ -15,6 +15,7 @@ import java.sql.CallableStatement;
 import java.sql.Timestamp;
 import java.sql.Types;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumSet;
@@ -181,7 +182,9 @@ public class AuthRepository {
         });
     }
 
-    private static Instant instant(Timestamp timestamp) { return timestamp == null ? null : timestamp.toInstant(); }
+    private static Instant instant(Timestamp timestamp) {
+        return timestamp == null ? null : timestamp.toLocalDateTime().toInstant(ZoneOffset.UTC);
+    }
 
     @FunctionalInterface
     private interface StatementConfigurer { void configure(CallableStatement statement) throws java.sql.SQLException; }

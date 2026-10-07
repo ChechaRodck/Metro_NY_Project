@@ -1,6 +1,7 @@
 package com.metrony.auth;
 
 import com.metrony.config.AuthProperties;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import java.time.Clock;
 import java.time.Duration;
@@ -17,6 +18,7 @@ public class LoginAttemptLimiter {
     private final AuthProperties properties;
     private final Clock clock;
 
+    @Autowired
     public LoginAttemptLimiter(AuthProperties properties) { this(properties, Clock.systemUTC()); }
     LoginAttemptLimiter(AuthProperties properties, Clock clock) { this.properties = properties; this.clock = clock; }
 

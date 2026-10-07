@@ -7,13 +7,29 @@
 
 SET DEFINE OFF
 SET SERVEROUTPUT ON
+WHENEVER SQLERROR EXIT SQL.SQLCODE ROLLBACK
 
 PROMPT Creando tablas...
 @@01_tablas.sql
 PROMPT Creando secuencias...
 @@02_secuencias.sql
-PROMPT Insertando roles de seguridad...
+PROMPT Insertando catalogo obligatorio de roles de seguridad...
 @@02a_roles_seguridad.sql
+PROMPT Verificando roles canonicos...
+DECLARE
+  v_roles NUMBER;
+BEGIN
+  SELECT COUNT(*)
+    INTO v_roles
+    FROM ROL
+   WHERE estado = 'ACTIVO'
+     AND codigo IN ('ADMIN', 'OPERACIONES', 'MANTENIMIENTO', 'CONSULTA');
+
+  IF v_roles <> 4 THEN
+    RAISE_APPLICATION_ERROR(-20179, 'No se instalaron los cuatro roles canonicos');
+  END IF;
+END;
+/
 PROMPT Creando funciones...
 @@03_funciones.sql
 PROMPT Creando procedimientos...

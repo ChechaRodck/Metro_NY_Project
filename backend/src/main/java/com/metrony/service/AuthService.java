@@ -12,6 +12,7 @@ import com.metrony.exception.LoginRateLimitedException;
 import com.metrony.repository.AuthRepository;
 import com.metrony.security.JwtTokenService;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,6 +30,7 @@ public class AuthService {
     private final Clock clock;
     private final String dummyHash;
 
+    @Autowired
     public AuthService(AuthRepository repository, PasswordEncoder passwordEncoder, PasswordPolicy passwordPolicy,
                        LoginAttemptLimiter limiter, JwtTokenService tokens) {
         this(repository, passwordEncoder, passwordPolicy, limiter, tokens, Clock.systemUTC());

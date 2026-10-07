@@ -58,10 +58,14 @@ Oracle `DATE` y `SYSDATE` de los modulos de negocio conservan su comportamiento.
 
 ## Inicializacion segura del administrador
 
-El esquema instala cuatro roles, pero nunca usuarios ni contrasenas. En una base
-nueva, defina las cuatro variables `APP_AUTH_BOOTSTRAP_*`, habilite el bootstrap
-para un solo arranque y use una contrasena no reutilizada. La operacion se rehusa
-si ya existe cualquier usuario y nunca reemplaza al administrador existente.
+El esquema instala cuatro roles, pero nunca usuarios ni contrasenas. Antes de
+habilitar el bootstrap, confirme que el orden canonico ejecuto
+`database/scripts/02a_roles_seguridad.sql` despues de `02_secuencias.sql`; el
+ejecutor `database/scripts/ejecutar_todo.sql` lo incluye y valida los cuatro
+roles. En una base nueva, defina las cuatro variables `APP_AUTH_BOOTSTRAP_*`,
+habilite el bootstrap para un solo arranque y use una contrasena no reutilizada.
+La operacion se rehusa si ya existe cualquier usuario y nunca reemplaza al
+administrador existente.
 
 Inmediatamente despues del alta, quite `APP_AUTH_BOOTSTRAP_PASSWORD` del entorno,
 establezca `APP_AUTH_BOOTSTRAP_ENABLED=false` y reinicie el proceso. La contrasena

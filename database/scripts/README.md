@@ -45,8 +45,10 @@ Ejecute cada archivo completo con F5 y detengase ante cualquier error:
 11. Ejecutar `09_pruebas.sql`; el archivo termina en `ROLLBACK`.
 12. Ejecutar `08_consultas.sql` para verificacion manual.
 
-`ejecutar_todo.sql` automatiza los pasos 2 a 8 para una instalacion demo. No lo
-ejecute dos veces sobre el mismo esquema sin una limpieza deliberada.
+`ejecutar_todo.sql` automatiza los pasos 2 a 8 para una instalacion demo, ejecuta
+`02a_roles_seguridad.sql` inmediatamente despues de las secuencias y comprueba
+que los cuatro roles canonicos queden activos. Se detiene ante cualquier error.
+No lo ejecute dos veces sobre el mismo esquema sin una limpieza deliberada.
 
 `99_eliminar_todo.sql` destruye los objetos instalados y se restringe a esquemas
 de desarrollo **desechables**. Nunca debe ejecutarse en un entorno compartido o
@@ -81,7 +83,10 @@ Esta es la secuencia pendiente cuando no se dispone de una instancia local:
 1. Confirmar `SELECT banner FROM v$version` como DBA y verificar 11g Release 2.
 2. Ejecutar `00_crear_usuario.sql` y proporcionar credenciales nuevas en el prompt.
 3. Abrir una conexion independiente con el esquema creado.
-4. Ejecutar, en orden, `01` a `06`; agregar `07` solo para la prueba demo.
+4. Ejecutar, en orden, `01_tablas.sql`, `02_secuencias.sql`,
+   `02a_roles_seguridad.sql`, `03_funciones.sql`, `04_procedimientos.sql`,
+   `05_triggers.sql` y `06_vistas.sql`; agregar `07_datos_prueba.sql` solo para
+   la prueba demo. `02a_roles_seguridad.sql` es obligatorio antes del bootstrap.
 5. Ejecutar las consultas de `USER_OBJECTS` y `USER_ERRORS` anteriores.
 6. Ejecutar `09_pruebas.sql`, confirmar solo resultados `OK` o `Error esperado`
    y comprobar que finaliza con `ROLLBACK`.

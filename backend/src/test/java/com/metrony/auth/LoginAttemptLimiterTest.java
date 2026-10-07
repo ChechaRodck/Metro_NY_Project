@@ -2,6 +2,7 @@ package com.metrony.auth;
 
 import com.metrony.config.AuthProperties;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
 import java.time.Clock;
 import java.time.Instant;
@@ -12,6 +13,16 @@ import java.util.concurrent.TimeUnit;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class LoginAttemptLimiterTest {
+    @Test void springContextInstantiatesLimiterWithAuthProperties() {
+        try (var context = new AnnotationConfigApplicationContext()) {
+            context.registerBean(AuthProperties.class, AuthProperties::new);
+            context.register(LoginAttemptLimiter.class);
+            context.refresh();
+
+            assertThat(context.getBean(LoginAttemptLimiter.class)).isNotNull();
+        }
+    }
+
     @Test void locksAtFiveFailuresExpiresAndSuccessResetsOnlyUsername() {
         AuthProperties properties = properties();
         MutableClock clock = new MutableClock(Instant.parse("2026-10-06T12:00:00Z"));

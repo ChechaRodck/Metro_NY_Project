@@ -4,6 +4,7 @@ import com.metrony.auth.AuthRole;
 import com.metrony.auth.AuthUserState;
 import com.metrony.auth.UserStatus;
 import com.metrony.repository.AuthRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.oauth2.core.OAuth2Error;
 import org.springframework.security.oauth2.core.OAuth2TokenValidator;
 import org.springframework.security.oauth2.core.OAuth2TokenValidatorResult;
@@ -23,6 +24,7 @@ public class JwtUserStateValidator implements OAuth2TokenValidator<Jwt> {
     private final AuthRepository repository;
     private final Clock clock;
 
+    @Autowired
     public JwtUserStateValidator(AuthRepository repository) { this(repository, Clock.systemUTC()); }
     JwtUserStateValidator(AuthRepository repository, Clock clock) { this.repository = repository; this.clock = clock; }
 
