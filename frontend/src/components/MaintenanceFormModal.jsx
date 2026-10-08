@@ -6,62 +6,31 @@ import {
   TrainFront,
   X,
 } from "lucide-react";
-import {
-  availableAssetTypes,
-  availableEquipmentCategories,
-  availablePartCategories,
-  availablePriorities,
-  availableTechnicians,
-} from "../data/maintenanceData";
-
-const equipmentConditionOptions = [
-  "Excelente",
-  "Bueno",
-  "Requiere revisión",
-  "Fuera de servicio",
-];
-
-const partUnitOptions = [
-  "Unidad",
-  "Caja",
-  "Juego",
-  "Metro",
-  "Litro",
-];
-
 const initialValues = {
   orders: {
     title: "",
-    asset: "",
-    assetType: availableAssetTypes[0] || "",
-    workshop: "",
-    technician: availableTechnicians[0] || "",
-    priority: availablePriorities[0] || "",
+    assetId: "",
+    maintenanceType: "PREVENTIVO",
+    technicianId: "",
+    priorityCode: "MEDIA",
     scheduledDate: "",
-    estimatedHours: "",
     estimatedCost: "",
-    status: "Pendiente",
   },
   equipment: {
+    id: "",
     name: "",
-    category: availableEquipmentCategories[0] || "",
+    typeCode: "VIA",
     serialNumber: "",
     manufacturer: "",
     location: "",
-    lastMaintenance: "",
     nextMaintenance: "",
-    condition: "Bueno",
-    status: "Operativo",
+    frequencyDays: "30",
   },
   parts: {
     name: "",
-    category: availablePartCategories[0] || "",
+    description: "",
+    unitCost: "",
     stock: "",
-    minimumStock: "",
-    unit: "Unidad",
-    location: "",
-    supplier: "",
-    status: "Disponible",
   },
 };
 
@@ -69,21 +38,21 @@ const modalInformation = {
   orders: {
     title: "Nueva orden de trabajo",
     description:
-      "Registra una actividad local para esta sesión de demostración.",
+      "Registra una orden persistente y conserva su historial en Oracle.",
     submitText: "Crear orden",
     icon: ClipboardList,
   },
   equipment: {
     title: "Registrar equipo",
     description:
-      "Agrega un equipo local al catálogo de esta sesión de demostración.",
+      "Agrega un equipo persistente al catálogo de Oracle.",
     submitText: "Registrar equipo",
     icon: TrainFront,
   },
   parts: {
     title: "Registrar repuesto",
     description:
-      "Agrega un repuesto local al catálogo de esta sesión de demostración.",
+      "Agrega un repuesto persistente al inventario de Oracle.",
     submitText: "Registrar repuesto",
     icon: PackageSearch,
   },
@@ -147,8 +116,8 @@ function SelectField({
         required={required}
       >
         {options.map((option) => (
-          <option key={option} value={option}>
-            {option}
+          <option key={typeof option === "string" ? option : option.value} value={typeof option === "string" ? option : option.value}>
+            {typeof option === "string" ? option : option.label}
           </option>
         ))}
       </select>
@@ -156,7 +125,15 @@ function SelectField({
   );
 }
 
-function MaintenanceFormModal({ type = "orders", onClose, onSave }) {
+function MaintenanceFormModal({
+  type = "orders",
+  equipmentOptions = [],
+  technicianOptions = [],
+  isSubmitting = false,
+  error = "",
+  onClose,
+  onSave,
+}) {
   const information = modalInformation[type] || modalInformation.orders;
   const Icon = information.icon;
   const dialogRef = useRef(null);
@@ -164,6 +141,10 @@ function MaintenanceFormModal({ type = "orders", onClose, onSave }) {
   const initialFocusRef = useRef(null);
   const [formData, setFormData] = useState({
     ...(initialValues[type] || initialValues.orders),
+    ...(type === "orders" ? {
+      assetId: equipmentOptions[0]?.id ?? "",
+      technicianId: String(technicianOptions[0]?.idEmpleado ?? ""),
+    } : {}),
   });
 
   useEffect(() => {
@@ -298,14 +279,13 @@ function MaintenanceFormModal({ type = "orders", onClose, onSave }) {
     if (type === "orders") {
       submittedRecord = {
         ...formData,
-        estimatedHours: Number(formData.estimatedHours),
         estimatedCost: Number(formData.estimatedCost),
       };
     } else if (type === "parts") {
       submittedRecord = {
         ...formData,
         stock: Number(formData.stock),
-        minimumStock: Number(formData.minimumStock),
+        unitCost: Number(formData.unitCost),
       };
     }
 
@@ -331,51 +311,40 @@ function MaintenanceFormModal({ type = "orders", onClose, onSave }) {
           />
         </div>
 
-        <FormField
-          label="Activo o unidad"
-          name="asset"
-          value={formData.asset}
-          onChange={handleChange}
-          placeholder="Ejemplo: Tren NY-2501"
-        />
         <SelectField
-          label="Tipo de activo"
-          name="assetType"
-          value={formData.assetType}
+          label="Equipo"
+          name="assetId"
+          value={formData.assetId}
           onChange={handleChange}
-          options={availableAssetTypes}
-        />
-        <FormField
-          label="Taller o ubicación"
-          name="workshop"
-          value={formData.workshop}
-          onChange={handleChange}
-          placeholder="Ejemplo: Taller Pitkin"
+          options={equipmentOptions.map((item) => ({ value: item.id, label: `${item.id} · ${item.name}` }))}
         />
         <SelectField
           label="Técnico responsable"
-          name="technician"
-          value={formData.technician}
+          name="technicianId"
+          value={formData.technicianId}
           onChange={handleChange}
-          options={availableTechnicians}
+          options={technicianOptions.map((item) => ({ value: item.idEmpleado, label: `${item.nombres} ${item.apellidos}` }))}
         />
         <SelectField
           label="Prioridad"
-          name="priority"
-          value={formData.priority}
-          onChange={handleChange}
-          options={availablePriorities}
-        />
-        <SelectField
-          label="Estado inicial"
-          name="status"
-          value={formData.status}
+          name="priorityCode"
+          value={formData.priorityCode}
           onChange={handleChange}
           options={[
-            "Pendiente",
-            "Programada",
-            "En progreso",
-            "Completada",
+            { value: "BAJA", label: "Baja" }, { value: "MEDIA", label: "Media" },
+            { value: "ALTA", label: "Alta" }, { value: "URGENTE", label: "Crítica" },
+          ]}
+        />
+        <SelectField
+          label="Tipo de mantenimiento"
+          name="maintenanceType"
+          value={formData.maintenanceType}
+          onChange={handleChange}
+          options={[
+            { value: "PREVENTIVO", label: "Preventivo" },
+            { value: "CORRECTIVO", label: "Correctivo" },
+            { value: "PREDICTIVO", label: "Predictivo" },
+            { value: "INSPECCION_SEGURIDAD", label: "Inspección de seguridad" },
           ]}
         />
         <FormField
@@ -384,15 +353,6 @@ function MaintenanceFormModal({ type = "orders", onClose, onSave }) {
           value={formData.scheduledDate}
           onChange={handleChange}
           type="date"
-        />
-        <FormField
-          label="Duración estimada"
-          name="estimatedHours"
-          value={formData.estimatedHours}
-          onChange={handleChange}
-          type="number"
-          placeholder="Horas"
-          min="1"
         />
         <FormField
           label="Costo estimado"
@@ -410,8 +370,8 @@ function MaintenanceFormModal({ type = "orders", onClose, onSave }) {
   function renderEquipmentFields() {
     return (
       <>
+        <FormField inputRef={initialFocusRef} label="Identificador del equipo" name="id" value={formData.id} onChange={handleChange} placeholder="Ejemplo: EQ-500" />
         <FormField
-          inputRef={initialFocusRef}
           label="Nombre del equipo"
           name="name"
           value={formData.name}
@@ -419,11 +379,14 @@ function MaintenanceFormModal({ type = "orders", onClose, onSave }) {
           placeholder="Ejemplo: Elevador hidráulico H-500"
         />
         <SelectField
-          label="Categoría"
-          name="category"
-          value={formData.category}
+          label="Tipo de equipo"
+          name="typeCode"
+          value={formData.typeCode}
           onChange={handleChange}
-          options={availableEquipmentCategories}
+          options={[
+            { value: "VIA", label: "Vía" },
+            { value: "SENAL", label: "Señal" },
+          ]}
         />
         <FormField
           label="Número de serie"
@@ -446,27 +409,6 @@ function MaintenanceFormModal({ type = "orders", onClose, onSave }) {
           onChange={handleChange}
           placeholder="Ejemplo: Depósito Corona"
         />
-        <SelectField
-          label="Condición"
-          name="condition"
-          value={formData.condition}
-          onChange={handleChange}
-          options={equipmentConditionOptions}
-        />
-        <SelectField
-          label="Estado"
-          name="status"
-          value={formData.status}
-          onChange={handleChange}
-          options={["Operativo", "Mantenimiento", "Inactivo"]}
-        />
-        <FormField
-          label="Último mantenimiento"
-          name="lastMaintenance"
-          value={formData.lastMaintenance}
-          onChange={handleChange}
-          type="date"
-        />
         <FormField
           label="Próximo mantenimiento"
           name="nextMaintenance"
@@ -474,6 +416,7 @@ function MaintenanceFormModal({ type = "orders", onClose, onSave }) {
           onChange={handleChange}
           type="date"
         />
+        <FormField label="Frecuencia de revisión (días)" name="frequencyDays" value={formData.frequencyDays} onChange={handleChange} type="number" min="1" />
       </>
     );
   }
@@ -489,13 +432,8 @@ function MaintenanceFormModal({ type = "orders", onClose, onSave }) {
           onChange={handleChange}
           placeholder="Ejemplo: Pastilla de freno"
         />
-        <SelectField
-          label="Categoría"
-          name="category"
-          value={formData.category}
-          onChange={handleChange}
-          options={availablePartCategories}
-        />
+        <FormField label="Descripción" name="description" value={formData.description} onChange={handleChange} required={false} />
+        <FormField label="Costo unitario" name="unitCost" value={formData.unitCost} onChange={handleChange} type="number" min="0" />
         <FormField
           label="Cantidad disponible"
           name="stock"
@@ -503,42 +441,6 @@ function MaintenanceFormModal({ type = "orders", onClose, onSave }) {
           onChange={handleChange}
           type="number"
           min="0"
-        />
-        <FormField
-          label="Stock mínimo"
-          name="minimumStock"
-          value={formData.minimumStock}
-          onChange={handleChange}
-          type="number"
-          min="0"
-        />
-        <SelectField
-          label="Unidad de medida"
-          name="unit"
-          value={formData.unit}
-          onChange={handleChange}
-          options={partUnitOptions}
-        />
-        <FormField
-          label="Ubicación"
-          name="location"
-          value={formData.location}
-          onChange={handleChange}
-          placeholder="Ejemplo: Almacén A-04"
-        />
-        <FormField
-          label="Proveedor"
-          name="supplier"
-          value={formData.supplier}
-          onChange={handleChange}
-          placeholder="Nombre del proveedor"
-        />
-        <SelectField
-          label="Estado"
-          name="status"
-          value={formData.status}
-          onChange={handleChange}
-          options={["Disponible", "Stock bajo", "Agotado"]}
         />
       </>
     );
@@ -586,7 +488,7 @@ function MaintenanceFormModal({ type = "orders", onClose, onSave }) {
           </button>
         </header>
 
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} aria-busy={isSubmitting || undefined}>
           <p className="maintenance-form-required">
             Los campos marcados con * son obligatorios.
           </p>
@@ -596,19 +498,23 @@ function MaintenanceFormModal({ type = "orders", onClose, onSave }) {
             {type === "parts" && renderPartFields()}
           </div>
 
+          {error && <p className="maintenance-form-error" role="alert">{error}</p>}
+
           <footer className="maintenance-modal__footer">
             <button
               type="button"
               className="maintenance-secondary-button"
               onClick={onClose}
+              disabled={isSubmitting}
             >
               Cancelar
             </button>
             <button
               type="submit"
               className="maintenance-primary-button"
+              disabled={isSubmitting}
             >
-              {information.submitText}
+              {isSubmitting ? "Guardando…" : information.submitText}
             </button>
           </footer>
         </form>

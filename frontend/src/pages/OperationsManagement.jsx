@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   CalendarClock,
   CircleCheck,
@@ -16,11 +16,15 @@ import DeleteRecordAction, {
   DeleteRecordNotice,
 } from "../components/DeleteRecordAction";
 import useDeleteRecord from "../hooks/useDeleteRecord";
+import ApiState from "../components/ApiState";
+import { hasAnyRole, useAuthSession } from "../auth";
 import {
-  operationSchedules,
-  scheduledTrips,
-} from "../data/operationsData";
-import { metroLines } from "../data/networkData";
+  cancelTrip,
+  createSchedule,
+  createTrip,
+  deactivateSchedule,
+  getOperations,
+} from "../services/operationsService";
 import "../styles/operations.css";
 
 const tabs = [
@@ -87,9 +91,7 @@ const searchableFields = {
   ],
 };
 
-const lineColorById = Object.fromEntries(
-  metroLines.map((line) => [line.id, line.color]),
-);
+const lineColorById = {};
 
 function normalizeText(value) {
   return String(value)
@@ -452,7 +454,7 @@ function OperationsIndex({
         </h3>
         <p>
           {isTripsView
-            ? "Lecturas derivadas de todos los viajes de demostración."
+            ? "Lecturas derivadas de los viajes devueltos por la API."
             : "Lecturas derivadas de los horarios registrados."}
         </p>
       </header>
@@ -511,7 +513,7 @@ function OperationsIndex({
           className="operations-estimate-note"
           id="operations-passenger-estimate-note"
         >
-          Suma de los pasajeros estimados de todos los viajes de demostración,
+          Suma de los pasajeros estimados en todos los viajes consultados,
           incluidos registros programados, retrasados, cancelados o no
           completados.
         </p>
@@ -568,17 +570,38 @@ function OperationsIndex({
 }
 
 function OperationsManagement() {
-  const [activeTab, setActiveTab] = useState("trips");
+  const session = useAuthSession();
+  const canWrite = hasAnyRole(session, ["ADMIN", "OPERACIONES"]);
+  const [activeTab, setActiveTab] = useState(() => canWrite ? "trips" : "schedules");
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("Todos");
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [announcement, setAnnouncement] = useState("");
+  const [request, setRequest] = useState({ status: "loading", error: null });
+  const [reloadVersion, setReloadVersion] = useState(0);
+  const [catalogs, setCatalogs] = useState({ routes: [], trains: [], employees: [] });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formError, setFormError] = useState("");
   const tabRefs = useRef([]);
 
   const [operationRecords, setOperationRecords] = useState({
-    trips: scheduledTrips,
-    schedules: operationSchedules,
+    trips: [],
+    schedules: [],
   });
+
+  useEffect(() => {
+    const controller = new AbortController();
+    getOperations({ signal: controller.signal, includeRestricted: canWrite })
+      .then((data) => {
+        setOperationRecords({ trips: data.trips, schedules: data.schedules });
+        setCatalogs({ routes: data.routes, trains: data.trains, employees: data.employees });
+        setRequest({ status: "success", error: null });
+      })
+      .catch((error) => {
+        if (error?.name !== "AbortError") setRequest({ status: "error", error });
+      });
+    return () => controller.abort();
+  }, [canWrite, reloadVersion]);
 
   const passengerEstimate = operationRecords.trips.reduce(
     (total, trip) => total + trip.passengers,
@@ -615,6 +638,7 @@ function OperationsManagement() {
   });
 
   function handleTabChange(tabId) {
+    if (!canWrite && tabId === "trips") return;
     setActiveTab(tabId);
     setSearchTerm("");
     setStatusFilter("Todos");
@@ -637,41 +661,34 @@ function OperationsManagement() {
     }
 
     event.preventDefault();
+    if (!canWrite) nextIndex = tabs.findIndex((tab) => tab.id === "schedules");
     handleTabChange(tabs[nextIndex].id);
     requestAnimationFrame(() => tabRefs.current[nextIndex]?.focus());
   }
 
-  function handleCreate(newRecord) {
-    const recordType = activeTab;
-    const recordLabel = recordType === "trips" ? "El viaje" : "El horario";
-    const isVisibleWithCurrentFilters = recordMatches(
-      newRecord,
-      recordType,
-      searchTerm,
-      statusFilter,
-    );
-
-    setOperationRecords((currentRecords) => ({
-      ...currentRecords,
-      [recordType]: [...currentRecords[recordType], newRecord],
-    }));
-    setAnnouncement(
-      `${recordLabel} ${newRecord.id} se agregó a esta sesión de demostración; no se almacena de forma persistente.${
-        isVisibleWithCurrentFilters
-          ? ""
-          : " El filtro actual no incluye el nuevo registro."
-      }`,
-    );
-    setIsFormOpen(false);
+  async function handleCreate(newRecord) {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    setFormError("");
+    try {
+      if (activeTab === "trips") await createTrip(newRecord);
+      else await createSchedule(newRecord);
+      setAnnouncement(activeTab === "trips" ? "Viaje guardado en Oracle." : "Horario guardado en Oracle.");
+      setIsFormOpen(false);
+      setRequest({ status: "loading", error: null });
+      setReloadVersion((version) => version + 1);
+    } catch (error) {
+      setFormError(error?.message ?? "No fue posible guardar el registro.");
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
-  function handleDeleteRecord({ id }) {
-    setOperationRecords((currentRecords) => ({
-      ...currentRecords,
-      [activeTab]: currentRecords[activeTab].filter(
-        (record) => record.id !== id,
-      ),
-    }));
+  async function handleDeleteRecord({ id }) {
+    if (activeTab === "trips") await cancelTrip(id);
+    else await deactivateSchedule(id);
+    setRequest({ status: "loading", error: null });
+    setReloadVersion((version) => version + 1);
   }
 
   function clearFilters() {
@@ -684,8 +701,8 @@ function OperationsManagement() {
       <header className="operations-heading">
         <div className="operations-heading__copy">
           <div className="operations-context" aria-label="Contexto de los datos">
-            <span>Escenario simulado</span>
-            <span>Datos de demostración</span>
+            <span>Fuente: API protegida</span>
+            <span>Datos persistidos en Oracle</span>
           </div>
 
           <h2 id="operations-page-title">Operaciones y horarios</h2>
@@ -698,6 +715,8 @@ function OperationsManagement() {
         <button
           type="button"
           className="operations-primary-button"
+          disabled={!canWrite}
+          title={!canWrite ? "Tu rol permite consultar, pero no modificar operaciones" : undefined}
           onClick={() => setIsFormOpen(true)}
         >
           <CirclePlus size={17} aria-hidden="true" />
@@ -710,7 +729,12 @@ function OperationsManagement() {
         onDismiss={deletion.dismissNotice}
       />
 
-      <div className="operations-board">
+      <ApiState status={request.status} error={request.error} onRetry={() => {
+        setRequest({ status: "loading", error: null });
+        setReloadVersion((version) => version + 1);
+      }} />
+
+      <div className="operations-board" hidden={request.status !== "success"}>
         <OperationsIndex
           activeTab={activeTab}
           trips={operationRecords.trips}
@@ -738,6 +762,8 @@ function OperationsManagement() {
                   aria-selected={isActive}
                   aria-controls={`operations-panel-${tab.id}`}
                   tabIndex={isActive ? 0 : -1}
+                  disabled={!canWrite && tab.id === "trips"}
+                  title={!canWrite && tab.id === "trips" ? "Tu rol no permite consultar viajes" : undefined}
                   className={`operations-tab${
                     isActive ? " operations-tab--active" : ""
                   }`}
@@ -804,12 +830,12 @@ function OperationsManagement() {
                       {activeTab === "trips" ? (
                         <TripsTable
                           records={filteredRecords}
-                          onDelete={deletion.requestDelete}
+                          onDelete={canWrite ? deletion.requestDelete : undefined}
                         />
                       ) : (
                         <SchedulesTable
                           records={filteredRecords}
-                          onDelete={deletion.requestDelete}
+                          onDelete={canWrite ? deletion.requestDelete : undefined}
                         />
                       )}
                     </div>
@@ -855,7 +881,14 @@ function OperationsManagement() {
       {isFormOpen && (
         <OperationsFormModal
           type={activeTab}
-          onClose={() => setIsFormOpen(false)}
+          routes={catalogs.routes}
+          trains={catalogs.trains}
+          drivers={catalogs.employees}
+          isSubmitting={isSubmitting}
+          error={formError}
+          onClose={() => {
+            if (!isSubmitting) setIsFormOpen(false);
+          }}
           onSubmit={handleCreate}
         />
       )}

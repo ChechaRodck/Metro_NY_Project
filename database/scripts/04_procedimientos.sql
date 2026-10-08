@@ -53,6 +53,9 @@ CREATE OR REPLACE PROCEDURE SP_AUTH_BOOTSTRAP_ADMIN (
   v_id_rol NUMBER;
 BEGIN
   LOCK TABLE USUARIO IN EXCLUSIVE MODE;
+  IF p_actor = 'BOOTSTRAP_DEMO' AND p_nombre_usuario <> 'demo_admin' THEN
+    RAISE_APPLICATION_ERROR(-20181, 'El bootstrap demo solo admite la cuenta compartida');
+  END IF;
   BEGIN
     SELECT id_rol INTO v_id_rol FROM ROL WHERE codigo = 'ADMIN' AND estado = 'ACTIVO';
   EXCEPTION WHEN NO_DATA_FOUND THEN
@@ -71,6 +74,17 @@ BEGIN
 
     IF v_total = 0 THEN
       RAISE_APPLICATION_ERROR(-20180, 'El usuario bootstrap existente no tiene rol ADMIN');
+    END IF;
+
+    IF p_actor = 'BOOTSTRAP_DEMO' THEN
+      UPDATE USUARIO
+         SET nombre_mostrar = p_nombre_mostrar,
+             hash_contrasena = p_hash,
+             estado = 'ACTIVO',
+             intentos_fallidos = 0,
+             inicio_ventana_fallos = NULL,
+             bloqueado_hasta = NULL
+       WHERE id_usuario = p_id_usuario;
     END IF;
 
     p_creado := 'N';

@@ -104,6 +104,15 @@ public class RutaRepository extends BaseRepository {
         return listar("SELECT * FROM HORARIO WHERE id_ruta = ? ORDER BY dia_semana, hora_inicio", idRuta);
     }
 
+    public List<Map<String, Object>> listarHorarios() {
+        return listar("""
+                SELECT h.*, r.codigo_ruta, r.id_linea
+                  FROM HORARIO h
+                  JOIN RUTA r ON r.id_ruta = h.id_ruta
+                 ORDER BY r.id_linea, r.codigo_ruta, h.dia_semana, h.hora_inicio
+                """);
+    }
+
     public Long crearHorario(Long idRuta, HorarioRequest r) {
         Long id = siguienteId("SEQ_HORARIO");
         ejecutar("""

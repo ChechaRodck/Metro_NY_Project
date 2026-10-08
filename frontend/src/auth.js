@@ -200,4 +200,9 @@ export function useAuthSession() {
   );
 }
 
+export function hasAnyRole(session, allowedRoles) {
+  const roles = session?.user?.roles;
+  return Array.isArray(roles) && allowedRoles.some((role) => roles.includes(role));
+}
+
 scheduleExpiration();

@@ -11,28 +11,29 @@ function createInitialValues(fields) {
 
 function getConfigurations(
   passengerOptions,
-  cardOptions,
-  cardTypes,
-  paymentMethods,
-  fareCategories,
+  fareOptions,
+  stationOptions,
 ) {
   return {
     passengers: {
       title: "Registrar pasajero",
       description:
-        "Ingresa los datos administrativos para esta sesión de demostración.",
+        "Ingresa los datos administrativos que se guardarán en Oracle.",
       fields: [
         {
-          name: "name",
-          label: "Nombre completo",
-          placeholder: "Nombre del pasajero",
+          name: "firstNames",
+          label: "Nombres",
           required: true,
         },
         {
-          name: "document",
-          label: "Documento de identificación",
-          placeholder: "Ejemplo: NY-123456",
+          name: "lastNames",
+          label: "Apellidos",
           required: true,
+        },
+        {
+          name: "birthDate",
+          label: "Fecha de nacimiento",
+          type: "date",
         },
         {
           name: "phone",
@@ -48,17 +49,17 @@ function getConfigurations(
           required: true,
         },
         {
-          name: "registrationDate",
-          label: "Fecha de registro",
-          type: "date",
-          required: true,
-        },
-        {
-          name: "status",
-          label: "Estado del pasajero",
+          name: "passengerType",
+          label: "Tipo de pasajero",
           type: "select",
-          defaultValue: "Activo",
-          options: ["Activo", "Suspendido", "Inactivo"],
+          defaultValue: "REGULAR",
+          options: [
+            { value: "REGULAR", label: "Regular" },
+            { value: "ESTUDIANTE", label: "Estudiante" },
+            { value: "ADULTO_MAYOR", label: "Adulto mayor" },
+            { value: "DISCAPACIDAD", label: "Discapacidad" },
+            { value: "EMPLEADO", label: "Empleado" },
+          ],
           required: true,
         },
       ],
@@ -66,14 +67,8 @@ function getConfigurations(
     cards: {
       title: "Emitir tarjeta",
       description:
-        "Asigna una tarjeta interna del metro durante esta sesión de demostración.",
+        "Emite una tarjeta mediante el procedimiento seguro de Oracle.",
       fields: [
-        {
-          name: "number",
-          label: "Número de tarjeta",
-          placeholder: "8041 9203 0000 0000",
-          required: true,
-        },
         {
           name: "passengerId",
           label: "Pasajero",
@@ -83,11 +78,11 @@ function getConfigurations(
           required: true,
         },
         {
-          name: "type",
-          label: "Tipo de tarjeta",
+          name: "fareCode",
+          label: "Tarifa",
           type: "select",
-          defaultValue: cardTypes[0] ?? "",
-          options: cardTypes,
+          defaultValue: fareOptions[0]?.value ?? "",
+          options: fareOptions,
           required: true,
         },
         {
@@ -100,38 +95,23 @@ function getConfigurations(
           required: true,
         },
         {
-          name: "issueDate",
-          label: "Fecha de emisión",
-          type: "date",
-          required: true,
-        },
-        {
-          name: "expirationDate",
-          label: "Fecha de vencimiento",
-          type: "date",
-          required: true,
-        },
-        {
-          name: "status",
-          label: "Estado de la tarjeta",
+          name: "stationId",
+          label: "Estación de emisión",
           type: "select",
-          defaultValue: "Activa",
-          options: ["Activa", "Por vencer", "Bloqueada", "Vencida"],
-          required: true,
+          defaultValue: stationOptions[0]?.value ?? "",
+          options: stationOptions,
         },
       ],
     },
     recharges: {
       title: "Registrar recarga",
       description:
-        "Registra una transacción local sin modificar el saldo de ninguna tarjeta.",
+        "Registra una recarga real. El número se usa solo para esta solicitud y no se conserva en el navegador.",
       fields: [
         {
-          name: "cardId",
-          label: "Tarjeta de referencia",
-          type: "select",
-          defaultValue: cardOptions[0]?.value ?? "",
-          options: cardOptions,
+          name: "cardNumber",
+          label: "Número completo de tarjeta",
+          placeholder: "Número requerido por el procedimiento de recarga",
           required: true,
         },
         {
@@ -143,46 +123,40 @@ function getConfigurations(
           required: true,
         },
         {
-          name: "date",
-          label: "Fecha",
-          type: "date",
-          required: true,
-        },
-        {
-          name: "time",
-          label: "Hora",
-          type: "time",
-          required: true,
-        },
-        {
-          name: "method",
+          name: "paymentMethod",
           label: "Método registrado",
           type: "select",
-          defaultValue: paymentMethods[0] ?? "",
-          options: paymentMethods,
+          defaultValue: "EFECTIVO",
+          options: [
+            { value: "EFECTIVO", label: "Efectivo" },
+            { value: "TARJETA_CREDITO", label: "Tarjeta de crédito" },
+            { value: "TARJETA_DEBITO", label: "Tarjeta de débito" },
+            { value: "APP_MOVIL", label: "Aplicación móvil" },
+          ],
           required: true,
         },
         {
-          name: "reference",
-          label: "Referencia",
-          placeholder: "Ejemplo: TRX-895300",
-          required: true,
-        },
-        {
-          name: "status",
-          label: "Estado de la recarga",
+          name: "channel",
+          label: "Canal",
           type: "select",
-          defaultValue: "Aprobada",
-          options: ["Aprobada", "Pendiente", "Rechazada"],
+          defaultValue: "TAQUILLA",
+          options: [
+            { value: "TAQUILLA", label: "Taquilla" },
+            { value: "MAQUINA_ESTACION", label: "Máquina de estación" },
+            { value: "APP", label: "Aplicación" },
+            { value: "WEB", label: "Web" },
+          ],
           required: true,
         },
+        { name: "stationId", label: "Estación", type: "select", options: stationOptions, required: true },
       ],
     },
     fares: {
       title: "Registrar tarifa",
       description:
-        "Agrega una definición tarifaria local para esta sesión de demostración.",
+        "Agrega una definición tarifaria persistente con los estados oficiales de Oracle.",
       fields: [
+        { name: "code", label: "Código", required: true },
         {
           name: "name",
           label: "Nombre de la tarifa",
@@ -197,11 +171,11 @@ function getConfigurations(
           required: true,
         },
         {
-          name: "category",
+          name: "categoryCode",
           label: "Categoría",
           type: "select",
-          defaultValue: fareCategories[0] ?? "",
-          options: fareCategories,
+          defaultValue: "TODOS",
+          options: ["TODOS", "REGULAR", "ESTUDIANTE", "ADULTO_MAYOR", "DISCAPACIDAD", "EMPLEADO"],
           required: true,
         },
         {
@@ -213,19 +187,17 @@ function getConfigurations(
           required: true,
         },
         {
-          name: "validity",
-          label: "Vigencia registrada",
-          placeholder: "Ejemplo: 7 días",
-          required: true,
-        },
-        {
-          name: "status",
-          label: "Estado de la tarifa",
+          name: "productType",
+          label: "Tipo de producto",
           type: "select",
-          defaultValue: "Activa",
-          options: ["Activa", "Inactiva"],
+          defaultValue: "VIAJE_INDIVIDUAL",
+          options: ["VIAJE_INDIVIDUAL", "PASE_DIARIO", "PASE_SEMANAL", "PASE_MENSUAL", "TARIFA_REDUCIDA", "PASE_ESTUDIANTIL"],
           required: true,
         },
+        { name: "startDate", label: "Inicio de vigencia", type: "date", required: true },
+        { name: "endDate", label: "Fin de vigencia", type: "date" },
+        { name: "maxTrips", label: "Máximo de viajes", type: "number", min: "1" },
+        { name: "durationDays", label: "Duración en días", type: "number", min: "1" },
       ],
     },
   };
@@ -234,10 +206,10 @@ function getConfigurations(
 export default function PassengerFormModal({
   type,
   availablePassengers,
-  availableCards,
-  cardTypes,
-  paymentMethods,
-  fareCategories,
+  availableFares = [],
+  availableStations = [],
+  isSubmitting = false,
+  error = "",
   onClose,
   onSubmit,
 }) {
@@ -245,16 +217,15 @@ export default function PassengerFormModal({
     value: passenger.id,
     label: `${passenger.id} · ${passenger.name}`,
   }));
-  const cardOptions = availableCards.map((card) => ({
-    value: card.id,
-    label: `${card.id} · •••• ${String(card.number ?? "").replace(/\D/g, "").slice(-4)}`,
+  const fareOptions = availableFares.map((fare) => ({
+    value: fare.id,
+    label: `${fare.id} · ${fare.name}`,
   }));
+  const stationOptions = availableStations.map((station) => ({ value: station.idEstacion, label: station.nombre }));
   const configurations = getConfigurations(
     passengerOptions,
-    cardOptions,
-    cardTypes,
-    paymentMethods,
-    fareCategories,
+    fareOptions,
+    stationOptions,
   );
   const configuration = configurations[type] ?? configurations.passengers;
   const dialogRef = useRef(null);
@@ -369,38 +340,20 @@ export default function PassengerFormModal({
     event.preventDefault();
     let newRecord = { ...formValues };
 
-    if (type === "passengers") {
-      newRecord = { ...formValues, trips: 0 };
-    }
-
     if (type === "cards") {
-      const passenger = availablePassengers.find(
-        (item) => item.id === formValues.passengerId,
-      );
-
       newRecord = {
         ...formValues,
         balance: Number(formValues.balance),
-        passenger: passenger?.name ?? "Sin asociación registrada",
       };
     }
 
     if (type === "recharges") {
-      const selectedCard = availableCards.find(
-        (card) => card.id === formValues.cardId,
-      );
-
       newRecord = {
         amount: Number(formValues.amount),
-        date: formValues.date,
-        time: formValues.time,
-        method: formValues.method,
-        reference: formValues.reference,
-        status: formValues.status,
-        cardNumber: selectedCard
-          ? `•••• ${String(selectedCard.number ?? "").replace(/\D/g, "").slice(-4)}`
-          : "Sin asociación registrada",
-        passenger: selectedCard?.passenger ?? "Sin asociación registrada",
+        cardNumber: formValues.cardNumber,
+        paymentMethod: formValues.paymentMethod,
+        channel: formValues.channel,
+        stationId: formValues.stationId,
       };
     }
 
@@ -489,7 +442,7 @@ export default function PassengerFormModal({
           </button>
         </header>
 
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} aria-busy={isSubmitting || undefined}>
           <div className="passenger-form-grid">
             {configuration.fields.map((field, index) => (
               <label
@@ -510,12 +463,14 @@ export default function PassengerFormModal({
             ))}
           </div>
 
+          {error && <p className="passenger-form-error" role="alert">{error}</p>}
+
           <footer className="passenger-modal__footer">
-            <button type="button" className="passenger-modal__cancel" onClick={onClose}>
+            <button type="button" className="passenger-modal__cancel" onClick={onClose} disabled={isSubmitting}>
               Cancelar
             </button>
-            <button type="submit" className="passenger-modal__save">
-              Guardar registro
+            <button type="submit" className="passenger-modal__save" disabled={isSubmitting}>
+              {isSubmitting ? "Guardando…" : "Guardar registro"}
             </button>
           </footer>
         </form>

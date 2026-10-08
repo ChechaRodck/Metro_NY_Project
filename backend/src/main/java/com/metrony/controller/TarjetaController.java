@@ -5,7 +5,12 @@ import com.metrony.dto.Peticiones.BoletoRequest;
 import com.metrony.dto.Peticiones.EmitirTarjetaRequest;
 import com.metrony.dto.Peticiones.EstadoRequest;
 import com.metrony.dto.Peticiones.RecargaRequest;
+import com.metrony.dto.OperationalResponses.CardBalanceResponse;
+import com.metrony.dto.OperationalResponses.CardIssueResponse;
+import com.metrony.dto.OperationalResponses.CardSummaryResponse;
+import com.metrony.dto.OperationalResponses.RechargeSummaryResponse;
 import com.metrony.repository.PasajeroRepository;
+import com.metrony.service.OperationalQueryService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
@@ -21,25 +26,27 @@ import java.util.Map;
 public class TarjetaController {
 
     private final PasajeroRepository repo;
+    private final OperationalQueryService queries;
 
-    public TarjetaController(PasajeroRepository repo) {
+    public TarjetaController(PasajeroRepository repo, OperationalQueryService queries) {
         this.repo = repo;
+        this.queries = queries;
     }
 
     @PostMapping("/tarjetas")
     @ResponseStatus(HttpStatus.CREATED)
-    public Map<String, Object> emitir(@Valid @RequestBody EmitirTarjetaRequest r) {
-        return Map.of("numeroTarjeta", repo.emitirTarjeta(r));
+    public CardIssueResponse emitir(@Valid @RequestBody EmitirTarjetaRequest r) {
+        return queries.issuedCard(repo.emitirTarjeta(r));
     }
 
     @GetMapping("/tarjetas/{numero}")
-    public Map<String, Object> buscar(@PathVariable Long numero) {
-        return repo.buscarTarjeta(numero);
+    public CardSummaryResponse buscar(@PathVariable Long numero) {
+        return queries.card(numero);
     }
 
     @GetMapping("/tarjetas/{numero}/saldo")
-    public Map<String, Object> saldo(@PathVariable Long numero) {
-        return repo.saldo(numero);
+    public CardBalanceResponse saldo(@PathVariable Long numero) {
+        return queries.balance(numero);
     }
 
     @PostMapping("/tarjetas/{numero}/recargas")
@@ -49,8 +56,8 @@ public class TarjetaController {
     }
 
     @GetMapping("/tarjetas/{numero}/recargas")
-    public List<Map<String, Object>> recargas(@PathVariable Long numero) {
-        return repo.recargasDeTarjeta(numero);
+    public List<RechargeSummaryResponse> recargas(@PathVariable Long numero) {
+        return queries.rechargesForCard(numero);
     }
 
     @GetMapping("/tarjetas/{numero}/viajes")
@@ -66,8 +73,8 @@ public class TarjetaController {
 
     // Consulta 14 (version ampliada: tambien las que no tienen saldo para un viaje)
     @GetMapping("/tarjetas/alertas")
-    public List<Map<String, Object>> alertas() {
-        return repo.tarjetasConAlerta();
+    public List<CardSummaryResponse> alertas() {
+        return queries.cardAlerts();
     }
 
     // ------------------------- ACCESOS -------------------------

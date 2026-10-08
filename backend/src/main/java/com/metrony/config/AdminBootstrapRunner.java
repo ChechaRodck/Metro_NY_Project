@@ -1,6 +1,7 @@
 package com.metrony.config;
 
 import com.metrony.auth.PasswordPolicy;
+import com.metrony.auth.UserStatus;
 import com.metrony.repository.AuthRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,8 +33,8 @@ public class AdminBootstrapRunner implements ApplicationRunner {
     @Transactional
     public void run(ApplicationArguments args) {
         AuthProperties.Bootstrap bootstrap = properties.getBootstrap();
-        if (!bootstrap.isEnabled()) return;
         boolean demoProfile = environment.matchesProfiles("demo");
+        if (!bootstrap.isEnabled() && !demoProfile) return;
         if (!demoProfile && repository.countUsers() > 0) {
             log.info("Bootstrap administrativo omitido: ya existen usuarios."); return;
         }
@@ -43,10 +44,16 @@ public class AdminBootstrapRunner implements ApplicationRunner {
                 || bootstrap.getDisplayName().length() > 120) {
             throw new IllegalStateException("APP_AUTH_BOOTSTRAP_DISPLAY_NAME es obligatorio y admite hasta 120 caracteres");
         }
+        String passwordHash = passwordEncoder.encode(bootstrap.getPassword());
         AuthRepository.BootstrapResult result = repository.bootstrapAdmin(username,
-                bootstrap.getDisplayName().trim(), passwordEncoder.encode(bootstrap.getPassword()),
+                bootstrap.getDisplayName().trim(), passwordHash,
                 demoProfile ? "BOOTSTRAP_DEMO" : "BOOTSTRAP");
+        if (demoProfile && !result.created()) {
+            repository.changePassword(username, passwordHash, "BOOTSTRAP_DEMO");
+            repository.changeState(username, UserStatus.ACTIVO, "BOOTSTRAP_DEMO");
+        }
         log.info(result.created() ? "Bootstrap administrativo completado."
+                : demoProfile ? "Bootstrap administrativo demo sincronizado."
                 : "Bootstrap administrativo omitido: la cuenta ya esta disponible.");
     }
 }

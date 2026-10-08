@@ -1,4 +1,4 @@
-import { Info, Trash2, X } from "lucide-react";
+import { CheckCircle2, Info, X } from "lucide-react";
 import "../styles/record-deletion.css";
 
 function DeleteRecordAction({
@@ -9,7 +9,8 @@ function DeleteRecordAction({
   variant = "icon",
   disabled = false,
 }) {
-  const accessibleName = `Eliminar ${label}`;
+  const isDisabled = disabled || typeof onRequest !== "function";
+  const accessibleName = `Cambiar estado de ${label}`;
 
   return (
     <button
@@ -19,13 +20,13 @@ function DeleteRecordAction({
       title={variant === "icon" ? accessibleName : undefined}
       data-delete-record-action=""
       data-delete-record-id={id}
-      disabled={disabled}
-      onClick={(event) =>
-        onRequest({ id, label, record }, event.currentTarget)
-      }
+      disabled={isDisabled}
+      onClick={(event) => {
+        if (!isDisabled) onRequest({ id, label, record }, event.currentTarget);
+      }}
     >
-      <Trash2 aria-hidden="true" />
-      {variant === "labeled" && <span>Eliminar registro</span>}
+      <CheckCircle2 aria-hidden="true" />
+      {variant === "labeled" && <span>Cambiar estado</span>}
     </button>
   );
 }
@@ -45,7 +46,7 @@ export function DeleteRecordNotice({ message, onDismiss }) {
       <button
         type="button"
         onClick={onDismiss}
-        aria-label="Cerrar aviso de eliminación"
+        aria-label="Cerrar aviso de cambio de estado"
       >
         <X aria-hidden="true" />
       </button>

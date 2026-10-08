@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   CirclePlus,
   Info,
@@ -9,19 +9,15 @@ import {
   UsersRound,
   X,
 } from "lucide-react";
-import {
-  incidents,
-  incidentSeverities,
-  incidentStatuses,
-} from "../data/incidentsData";
 import IncidentFormModal from "../components/IncidentFormModal";
+import ApiState from "../components/ApiState";
 import ConfirmDeleteModal from "../components/ConfirmDeleteModal";
 import DeleteRecordAction, {
   DeleteRecordNotice,
 } from "../components/DeleteRecordAction";
-import useDeleteRecord, {
-  getSelectionAfterDelete,
-} from "../hooks/useDeleteRecord";
+import useDeleteRecord from "../hooks/useDeleteRecord";
+import { hasAnyRole, useAuthSession } from "../auth";
+import { closeIncident, createIncident, getIncidents } from "../services/incidentService";
 import "../styles/incidents.css";
 
 const tabs = [
@@ -35,6 +31,9 @@ const initialFilters = {
   severity: "Todas",
   status: "Todos",
 };
+
+const incidentSeverities = ["Crítica", "Alta", "Media", "Baja"];
+const incidentStatuses = ["Abierto", "En atención", "Cerrado"];
 
 function normalizeText(value = "") {
   return String(value)
@@ -155,8 +154,8 @@ function getVisibleIncidents(rows, tabId, filters) {
   );
 }
 
-function getInitialSelection(tabId) {
-  return incidents.find((incident) => incidentMatchesTab(incident, tabId))
+function getInitialSelection(rows, tabId) {
+  return rows.find((incident) => incidentMatchesTab(incident, tabId))
     ?.incidentNumber;
 }
 
@@ -204,16 +203,6 @@ function getIncidentGroups(tabId, rows) {
       ),
     },
   ].filter((group) => group.records.length > 0);
-}
-
-function getNextIncidentNumber(rows) {
-  return (
-    rows.reduce(
-      (highest, incident) =>
-        Math.max(highest, Number(incident.incidentNumber || 0)),
-      0,
-    ) + 1
-  );
 }
 
 function getIncidentAccessibleName(incident) {
@@ -276,7 +265,7 @@ function IncidentInspector({ incident, onDelete }) {
         </div>
       </header>
 
-      <div className="record-delete-toolbar">
+      {!isFinalStatus(incident.status) && onDelete && <div className="record-delete-toolbar">
         <DeleteRecordAction
           id={incident.incidentNumber}
           label={`incidente #${incident.incidentNumber}: ${incident.type}`}
@@ -284,7 +273,7 @@ function IncidentInspector({ incident, onDelete }) {
           onRequest={onDelete}
           variant="labeled"
         />
-      </div>
+      </div>}
 
       <div className="incident-inspector__body">
         <section className="incident-inspector__section">
@@ -404,7 +393,7 @@ function IncidentRegister({
         <div className="incident-empty">
           <Siren aria-hidden="true" />
           <strong>Sin incidentes registrados</strong>
-          <p>Utiliza “Registrar incidente” para crear un registro local.</p>
+          <p>Utiliza “Registrar incidente” para crear un registro persistente.</p>
         </div>
       </section>
     );
@@ -512,19 +501,46 @@ function IncidentRegister({
 }
 
 function IncidentManagement() {
-  const [incidentRows, setIncidentRows] = useState(incidents);
+  const session = useAuthSession();
+  const canCreate = hasAnyRole(session, ["ADMIN", "OPERACIONES", "MANTENIMIENTO"]);
+  const canClose = hasAnyRole(session, ["ADMIN", "OPERACIONES"]);
+  const [incidentRows, setIncidentRows] = useState([]);
   const [activeTab, setActiveTab] = useState("all");
   const [filters, setFilters] = useState(initialFilters);
   const [selectedByTab, setSelectedByTab] = useState({
-    all: getInitialSelection("all"),
-    "non-final": getInitialSelection("non-final"),
-    final: getInitialSelection("final"),
+    all: null,
+    "non-final": null,
+    final: null,
   });
   const [notice, setNotice] = useState("");
   const [selectionAnnouncement, setSelectionAnnouncement] = useState("");
   const [creationAnnouncement, setCreationAnnouncement] = useState("");
   const [showForm, setShowForm] = useState(false);
+  const [request, setRequest] = useState({ status: "loading", error: null });
+  const [reloadVersion, setReloadVersion] = useState(0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formError, setFormError] = useState("");
   const tabRefs = useRef([]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    getIncidents({ signal: controller.signal })
+      .then((rows) => {
+        setIncidentRows(rows);
+        setSelectedByTab((current) => Object.fromEntries(
+          tabs.map((tab) => [tab.id,
+            rows.some((incident) => incident.incidentNumber === current[tab.id] && incidentMatchesTab(incident, tab.id))
+              ? current[tab.id]
+              : getInitialSelection(rows, tab.id),
+          ]),
+        ));
+        setRequest({ status: "success", error: null });
+      })
+      .catch((error) => {
+        if (error?.name !== "AbortError") setRequest({ status: "error", error });
+      });
+    return () => controller.abort();
+  }, [reloadVersion]);
 
   const finalIncidents = incidentRows.filter((incident) =>
     isFinalStatus(incident.status),
@@ -657,73 +673,30 @@ function IncidentManagement() {
     );
   }
 
-  function handleSave(newIncident) {
-    const createdIncident = {
-      ...newIncident,
-      incidentNumber: getNextIncidentNumber(incidentRows),
-    };
-    const nextRows = [createdIncident, ...incidentRows];
-    const createdIncidentIsVisible =
-      incidentMatchesTab(createdIncident, activeTab) &&
-      incidentMatchesFilters(createdIncident, filters);
-    setIncidentRows(nextRows);
-    if (createdIncidentIsVisible) {
-      setSelectedByTab((currentSelections) => ({
-        ...currentSelections,
-        [activeTab]: createdIncident.incidentNumber,
-      }));
-      setSelectionAnnouncement(
-        `Incidente ${createdIncident.incidentNumber} seleccionado: ${createdIncident.type}.`,
-      );
-    } else {
-      updateSelectionForVisibleRows(
-        getVisibleIncidents(nextRows, activeTab, filters),
-        activeTab,
-      );
+  async function handleSave(newIncident) {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    setFormError("");
+    try {
+      const result = await createIncident(newIncident);
+      const creationMessage = `El incidente #${result.numeroIncidente} fue registrado en Oracle.`;
+      setShowForm(false);
+      setNotice(creationMessage);
+      setCreationAnnouncement(creationMessage);
+      setRequest({ status: "loading", error: null });
+      setReloadVersion((version) => version + 1);
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : "No se pudo registrar el incidente.");
+    } finally {
+      setIsSubmitting(false);
     }
-    const creationMessage = `El incidente #${createdIncident.incidentNumber} se agregó solo a esta sesión de demostración.`;
-    setShowForm(false);
-    setNotice(creationMessage);
-    setCreationAnnouncement(creationMessage);
   }
 
-  function handleDeleteRecord({ id }) {
-    const nextRows = incidentRows.filter(
-      (incident) => incident.incidentNumber !== id,
-    );
-    const nextActiveSelection = getSelectionAfterDelete(
-      visibleIncidents,
-      id,
-      selectedByTab[activeTab],
-      (incident) => incident.incidentNumber,
-    );
-
-    setIncidentRows(nextRows);
-    setSelectedByTab((currentSelections) =>
-      Object.fromEntries(
-        tabs.map((tab) => {
-          const visibleForTab = getVisibleIncidents(
-            incidentRows,
-            tab.id,
-            filters,
-          );
-          return [
-            tab.id,
-            getSelectionAfterDelete(
-              visibleForTab,
-              id,
-              currentSelections[tab.id],
-              (incident) => incident.incidentNumber,
-            ),
-          ];
-        }),
-      ),
-    );
-    setSelectionAnnouncement(
-      nextActiveSelection
-        ? `Incidente ${nextActiveSelection} seleccionado después de eliminar el registro.`
-        : "No quedan incidentes visibles para seleccionar.",
-    );
+  async function handleDeleteRecord({ id, record }) {
+    await closeIncident(id, record);
+    setSelectionAnnouncement(`Incidente ${id} cerrado y confirmado por Oracle.`);
+    setRequest({ status: "loading", error: null });
+    setReloadVersion((version) => version + 1);
   }
 
   return (
@@ -733,16 +706,17 @@ function IncidentManagement() {
           <h2>Incidentes</h2>
           <p>
             Consulta clasificación, afectación, cronología y respuesta tal como
-            fueron registradas en los datos de demostración.
+            fueron registradas en Oracle.
           </p>
           <span className="incident-heading__context">
-            Datos de demostración · Las altas nuevas existen solo durante esta
-            sesión.
+            API protegida · Los cambios se confirman y persisten en la base de datos.
           </span>
         </div>
         <button
           type="button"
           className="incident-primary-button"
+          disabled={!canCreate}
+          title={!canCreate ? "Tu rol permite consultar, pero no registrar incidentes" : undefined}
           onClick={() => {
             setNotice("");
             setCreationAnnouncement("");
@@ -759,6 +733,15 @@ function IncidentManagement() {
         onDismiss={deletion.dismissNotice}
       />
 
+      <ApiState
+        status={request.status}
+        error={request.error}
+        onRetry={() => {
+          setRequest({ status: "loading", error: null });
+          setReloadVersion((version) => version + 1);
+        }}
+      />
+
       {notice && (
         <div className="incident-session-notice">
           <Info aria-hidden="true" />
@@ -766,7 +749,7 @@ function IncidentManagement() {
           <button
             type="button"
             onClick={() => setNotice("")}
-            aria-label="Cerrar aviso de creación local"
+            aria-label="Cerrar aviso de registro"
           >
             <X aria-hidden="true" />
           </button>
@@ -776,6 +759,7 @@ function IncidentManagement() {
       <section
         className="incident-situation"
         aria-labelledby="incident-situation-title"
+        hidden={request.status !== "success"}
       >
         <h3 id="incident-situation-title" className="incident-visually-hidden">
           Situación de incidentes registrada
@@ -796,7 +780,7 @@ function IncidentManagement() {
         </p>
       </section>
 
-      <section className="incident-desk" aria-label="Mesa de respuesta">
+      <section className="incident-desk" aria-label="Mesa de respuesta" hidden={request.status !== "success"}>
         <div className="incident-desk__tabs" role="tablist" aria-label="Vistas de incidentes">
           {tabs.map((tab, index) => {
             const isActive = activeTab === tab.id;
@@ -868,7 +852,7 @@ function IncidentManagement() {
             />
             <IncidentInspector
               incident={selectedIncident}
-              onDelete={deletion.requestDelete}
+              onDelete={canClose ? deletion.requestDelete : undefined}
             />
           </div>
         </div>
@@ -880,7 +864,16 @@ function IncidentManagement() {
       <p className="incident-live-region" aria-live="polite" aria-atomic="true">{selectionAnnouncement}</p>
       <p className="incident-live-region" aria-live="polite" aria-atomic="true">{creationAnnouncement}</p>
 
-      {showForm && <IncidentFormModal onClose={() => setShowForm(false)} onSave={handleSave} />}
+      {showForm && (
+        <IncidentFormModal
+          isSubmitting={isSubmitting}
+          error={formError}
+          onClose={() => {
+            if (!isSubmitting) setShowForm(false);
+          }}
+          onSave={handleSave}
+        />
+      )}
 
       {deletion.pendingDelete && (
         <ConfirmDeleteModal

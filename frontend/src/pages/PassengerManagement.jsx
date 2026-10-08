@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   CirclePlus,
   CreditCard,
@@ -14,18 +14,18 @@ import ConfirmDeleteModal from "../components/ConfirmDeleteModal";
 import DeleteRecordAction, {
   DeleteRecordNotice,
 } from "../components/DeleteRecordAction";
-import useDeleteRecord, {
-  getSelectionAfterDelete,
-} from "../hooks/useDeleteRecord";
+import useDeleteRecord from "../hooks/useDeleteRecord";
+import ApiState from "../components/ApiState";
+import { hasAnyRole, useAuthSession } from "../auth";
 import {
-  availableCardTypes,
-  availableFareCategories,
-  availablePaymentMethods,
-  fares,
-  metroCards,
-  passengers,
-  recharges,
-} from "../data/passengerData";
+  createFare,
+  createPassenger,
+  deactivateFare,
+  deactivatePassenger,
+  getPassengerLedger,
+  issueCard,
+  rechargeCard,
+} from "../services/passengerService";
 import "../styles/passengers.css";
 
 const tabs = [
@@ -63,13 +63,6 @@ const statusOptions = {
   cards: ["Todos", "Activa", "Por vencer", "Bloqueada", "Vencida"],
   recharges: ["Todos", "Aprobada", "Pendiente", "Rechazada"],
   fares: ["Todos", "Activa", "Inactiva"],
-};
-
-const recordPrefixes = {
-  passengers: "PAS",
-  cards: "CARD",
-  recharges: "REC",
-  fares: "TAR",
 };
 
 function normalizeText(value) {
@@ -247,7 +240,7 @@ function InstrumentBand({ type, records }) {
       ["Estado Aprobada", approvedRecords.length],
       ["Estado Rechazada", activeRecords.filter((record) => record.status === "Rechazada").length],
       ["Estado Pendiente", activeRecords.filter((record) => record.status === "Pendiente").length],
-      ["Monto aprobado registrado", formatCurrency(approvedTotal), "Formato USD del demo"],
+      ["Monto aprobado registrado", formatCurrency(approvedTotal), "Formato monetario de la interfaz"],
     ];
   } else {
     const categories = new Set(
@@ -269,7 +262,7 @@ function InstrumentBand({ type, records }) {
     >
       <header>
         <h3 id={`passenger-instruments-title-${type}`}>Lecturas del registro</h3>
-        <p>Valores directos de los datos de demostración.</p>
+        <p>Valores directos de los registros consultados en Oracle.</p>
       </header>
 
       <dl
@@ -596,11 +589,7 @@ function PassengerInspector({ passenger, records, deleteAction }) {
           <DetailItem label="Fecha de registro">
             <time dateTime={passenger.registrationDate}>{formatDate(passenger.registrationDate)}</time>
           </DetailItem>
-          <DetailItem label="Viajes registrados">{passenger.trips}</DetailItem>
         </dl>
-        <p className="passenger-inspector__note">
-          Viajes registrados es un conteo agregado; no representa historial ni actividad en tiempo real.
-        </p>
       </section>
 
       <section className="passenger-associations" aria-labelledby="passenger-associated-cards-title">
@@ -756,7 +745,7 @@ function FareInspector({ fare, deleteAction }) {
 }
 
 function LedgerInspector({ type, record, records, onDelete }) {
-  const deleteAction = record ? (
+  const deleteAction = record && (type === "passengers" || type === "fares") ? (
     <DeleteRecordAction
       id={record.id}
       label={`${tabInformation[type].singular} ${getRegisterTitle(record, type)}`}
@@ -807,6 +796,8 @@ function LedgerInspector({ type, record, records, onDelete }) {
 }
 
 export default function PassengerManagement() {
+  const session = useAuthSession();
+  const canWrite = hasAnyRole(session, ["ADMIN"]);
   const [activeTab, setActiveTab] = useState("passengers");
   const [filters, setFilters] = useState({
     passengers: { search: "", status: "Todos" },
@@ -817,14 +808,32 @@ export default function PassengerManagement() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [announcement, setAnnouncement] = useState("");
   const [selectionAnnouncement, setSelectionAnnouncement] = useState("");
-  const [records, setRecords] = useState({ passengers, cards: metroCards, recharges, fares });
+  const [records, setRecords] = useState({ passengers: [], cards: [], recharges: [], fares: [] });
+  const [stations, setStations] = useState([]);
+  const [request, setRequest] = useState({ status: "loading", error: null });
+  const [reloadVersion, setReloadVersion] = useState(0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formError, setFormError] = useState("");
   const [selectedIds, setSelectedIds] = useState({
-    passengers: getPreferredRecordId(passengers, "passengers"),
-    cards: getPreferredRecordId(metroCards, "cards"),
-    recharges: getPreferredRecordId(recharges, "recharges"),
-    fares: getPreferredRecordId(fares, "fares"),
+    passengers: null, cards: null, recharges: null, fares: null,
   });
   const tabRefs = useRef([]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    getPassengerLedger({ signal: controller.signal }).then((data) => {
+      setRecords({ passengers: data.passengers, cards: data.cards, recharges: data.recharges, fares: data.fares });
+      setStations(data.stations);
+      setSelectedIds((current) => ({
+        passengers: current.passengers && data.passengers.some((row) => row.id === current.passengers) ? current.passengers : getPreferredRecordId(data.passengers, "passengers"),
+        cards: current.cards && data.cards.some((row) => row.id === current.cards) ? current.cards : getPreferredRecordId(data.cards, "cards"),
+        recharges: current.recharges && data.recharges.some((row) => row.id === current.recharges) ? current.recharges : getPreferredRecordId(data.recharges, "recharges"),
+        fares: current.fares && data.fares.some((row) => row.id === current.fares) ? current.fares : getPreferredRecordId(data.fares, "fares"),
+      }));
+      setRequest({ status: "success", error: null });
+    }).catch((error) => { if (error?.name !== "AbortError") setRequest({ status: "error", error }); });
+    return () => controller.abort();
+  }, [reloadVersion]);
 
   const activeFilters = filters[activeTab];
   const activeRecords = records[activeTab];
@@ -898,60 +907,28 @@ export default function PassengerManagement() {
     );
   }
 
-  function handleCreate(formData) {
-    const generatedId = `${recordPrefixes[activeTab]}-${String(Date.now()).slice(-6)}`;
-    const newRecord = { id: generatedId, ...formData };
-    const isVisible = recordMatches(
-      newRecord,
-      activeTab,
-      activeFilters.search,
-      activeFilters.status,
-      records,
-    );
-    const label = tabInformation[activeTab].singular;
-
-    setRecords((currentRecords) => ({
-      ...currentRecords,
-      [activeTab]: [...currentRecords[activeTab], newRecord],
-    }));
-
-    if (isVisible) {
-      setSelectedIds((currentIds) => ({ ...currentIds, [activeTab]: newRecord.id }));
-      setSelectionAnnouncement(
-        `${label} ${newRecord.id} seleccionado; estado registrado ${newRecord.status}.`,
-      );
-    }
-
-    setAnnouncement(
-      `El ${label} ${newRecord.id} se agregó solo a esta sesión de demostración; no se almacena de forma persistente.${
-        isVisible ? "" : " Los filtros actuales no incluyen el nuevo registro."
-      }`,
-    );
-    setIsModalOpen(false);
+  async function handleCreate(formData) {
+    if (isSubmitting) return;
+    setIsSubmitting(true); setFormError("");
+    try {
+      if (activeTab === "passengers") await createPassenger(formData);
+      else if (activeTab === "cards") await issueCard(formData);
+      else if (activeTab === "recharges") await rechargeCard(formData);
+      else await createFare(formData);
+      setAnnouncement("El registro se guardó correctamente en Oracle.");
+      setIsModalOpen(false);
+      setRequest({ status: "loading", error: null });
+      setReloadVersion((version) => version + 1);
+    } catch (error) {
+      setFormError(error?.message ?? "No fue posible guardar el registro.");
+    } finally { setIsSubmitting(false); }
   }
 
-  function handleDeleteRecord({ id }) {
-    const nextSelection = getSelectionAfterDelete(
-      filteredRecords,
-      id,
-      selectedRecord?.id,
-    );
-
-    setRecords((currentRecords) => ({
-      ...currentRecords,
-      [activeTab]: currentRecords[activeTab].filter(
-        (record) => record.id !== id,
-      ),
-    }));
-    setSelectedIds((currentIds) => ({
-      ...currentIds,
-      [activeTab]: nextSelection,
-    }));
-    setSelectionAnnouncement(
-      nextSelection
-        ? `${tabInformation[activeTab].singular} ${nextSelection} seleccionado después de eliminar el registro.`
-        : "No quedan registros visibles para seleccionar.",
-    );
+  async function handleDeleteRecord({ id }) {
+    if (activeTab === "passengers") await deactivatePassenger(id);
+    else if (activeTab === "fares") await deactivateFare(id);
+    setRequest({ status: "loading", error: null });
+    setReloadVersion((version) => version + 1);
   }
 
   return (
@@ -959,14 +936,14 @@ export default function PassengerManagement() {
       <header className="passengers-heading">
         <div className="passengers-heading__copy">
           <div className="passengers-context" aria-label="Contexto de los datos">
-            <span>Datos de demostración</span>
-            <span>Acceso tarifario</span>
+            <span>Fuente: API protegida</span>
+            <span>Privacidad: tarjetas enmascaradas</span>
           </div>
           <h2 id="passengers-page-title">Pasajeros y tarjetas</h2>
           <p>Consulta registros de pasajeros, tarjetas, recargas y tarifas sin inferir actividad en tiempo real.</p>
         </div>
 
-        <button type="button" className="passengers-primary-button" onClick={() => setIsModalOpen(true)}>
+        <button type="button" className="passengers-primary-button" onClick={() => setIsModalOpen(true)} disabled={!canWrite} title={!canWrite ? "Tu rol permite consultar, pero no modificar el libro tarifario" : undefined}>
           <CirclePlus size={17} aria-hidden="true" />
           {tabInformation[activeTab].action}
         </button>
@@ -977,6 +954,11 @@ export default function PassengerManagement() {
         onDismiss={deletion.dismissNotice}
       />
 
+      <ApiState status={request.status} error={request.error} onRetry={() => {
+        setRequest({ status: "loading", error: null });
+        setReloadVersion((version) => version + 1);
+      }} />
+
       {announcement && (
         <div className="passengers-session-notice" role="status" aria-live="polite" aria-atomic="true">
           <span>{announcement}</span>
@@ -986,7 +968,7 @@ export default function PassengerManagement() {
         </div>
       )}
 
-      <section className="passenger-ledger" aria-label="Libro de acceso tarifario">
+      <section className="passenger-ledger" aria-label="Libro de acceso tarifario" hidden={request.status !== "success"}>
         <div className="passenger-tabs" role="tablist" aria-label="Entidades de acceso tarifario">
           {tabs.map((tab, index) => {
             const isActive = activeTab === tab.id;
@@ -1038,7 +1020,7 @@ export default function PassengerManagement() {
                   type={activeTab}
                   record={selectedRecord}
                   records={records}
-                  onDelete={deletion.requestDelete}
+                  onDelete={canWrite ? deletion.requestDelete : undefined}
                 />
               </div>
             )}
@@ -1054,11 +1036,13 @@ export default function PassengerManagement() {
         <PassengerFormModal
           type={activeTab}
           availablePassengers={records.passengers}
-          availableCards={records.cards}
-          cardTypes={availableCardTypes}
-          paymentMethods={availablePaymentMethods}
-          fareCategories={availableFareCategories}
-          onClose={() => setIsModalOpen(false)}
+          availableFares={records.fares}
+          availableStations={stations}
+          isSubmitting={isSubmitting}
+          error={formError}
+          onClose={() => {
+            if (!isSubmitting) setIsModalOpen(false);
+          }}
           onSubmit={handleCreate}
         />
       )}

@@ -27,8 +27,9 @@ public class PersonalRepository extends BaseRepository {
 
     public List<Map<String, Object>> listarEmpleados(String codigoCargo, String estado) {
         return listar("""
-                SELECT e.id_empleado, e.nombres, e.apellidos, e.telefono, e.correo, e.fecha_contratacion,
-                       e.turno, e.estado_laboral, c.codigo_cargo, c.nombre_cargo,
+                SELECT e.id_empleado, e.nombres, e.apellidos, e.fecha_nacimiento, e.direccion,
+                       e.telefono, e.correo, e.fecha_contratacion, e.id_cargo, e.turno, e.salario,
+                       e.estado_laboral, e.id_supervisor, c.codigo_cargo, c.nombre_cargo,
                        s.nombres || ' ' || s.apellidos AS supervisor
                   FROM EMPLEADO e
                   JOIN CARGO c ON c.id_cargo = e.id_cargo
@@ -93,6 +94,18 @@ public class PersonalRepository extends BaseRepository {
                  WHERE c.id_empleado = ?
                  ORDER BY c.fecha_vencimiento DESC
                 """, idEmpleado);
+    }
+
+    public List<Map<String, Object>> listarCertificaciones() {
+        return listar("""
+                SELECT c.*, e.nombres || ' ' || e.apellidos AS empleado,
+                       (SELECT LISTAGG(m.nombre_modelo, ',') WITHIN GROUP (ORDER BY m.nombre_modelo)
+                          FROM CERTIFICACION_MODELO cm JOIN MODELO_TREN m ON m.id_modelo = cm.id_modelo
+                         WHERE cm.id_certificacion = c.id_certificacion) AS modelos
+                  FROM CERTIFICACION c
+                  JOIN EMPLEADO e ON e.id_empleado = c.id_empleado
+                 ORDER BY c.fecha_vencimiento, e.apellidos, e.nombres
+                """);
     }
 
     /** Guarda la certificacion y los modelos de tren que habilita (todo o nada). */

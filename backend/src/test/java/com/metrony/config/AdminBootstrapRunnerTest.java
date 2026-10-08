@@ -1,6 +1,7 @@
 package com.metrony.config;
 
 import com.metrony.auth.PasswordPolicy;
+import com.metrony.auth.UserStatus;
 import com.metrony.repository.AuthRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.DefaultApplicationArguments;
@@ -21,6 +22,25 @@ class AdminBootstrapRunnerTest {
                 new MockEnvironment())
                 .run(new DefaultApplicationArguments());
         verifyNoInteractions(repository);
+    }
+
+    @Test void demoProfileRunsEvenWhenTheGenericBootstrapFlagIsOverriddenOff() {
+        AuthProperties properties = new AuthProperties();
+        properties.getBootstrap().setUsername("demo_admin");
+        properties.getBootstrap().setPassword("TrenSeguro#2026!");
+        properties.getBootstrap().setDisplayName("Administrador Demo");
+        AuthRepository repository = mock(AuthRepository.class);
+        when(repository.bootstrapAdmin(anyString(), anyString(), anyString(), anyString()))
+                .thenReturn(new AuthRepository.BootstrapResult(8, true));
+        PasswordEncoder encoder = mock(PasswordEncoder.class);
+        when(encoder.encode("TrenSeguro#2026!")).thenReturn("bcrypt-hash");
+
+        new AdminBootstrapRunner(properties, repository, new PasswordPolicy(), encoder,
+                new MockEnvironment().withProperty("spring.profiles.active", "demo"))
+                .run(new DefaultApplicationArguments());
+
+        verify(repository).bootstrapAdmin("demo_admin", "Administrador Demo", "bcrypt-hash",
+                "BOOTSTRAP_DEMO");
     }
 
     @Test void enabledBootstrapRefusesToOverwriteExistingUsers() {
@@ -80,6 +100,8 @@ class AdminBootstrapRunnerTest {
         verify(repository, never()).countUsers();
         verify(repository).bootstrapAdmin(eq("demo_admin"), eq("Administrador Demo"), hash.capture(),
                 eq("BOOTSTRAP_DEMO"));
+        verify(repository, never()).changePassword(anyString(), anyString(), anyString());
+        verify(repository, never()).changeState(anyString(), any(), anyString());
         assertThat(hash.getValue()).startsWith("$2a$12$").isNotEqualTo("TrenSeguro#2026!");
         assertThat(encoder.matches("TrenSeguro#2026!", hash.getValue())).isTrue();
     }
@@ -102,6 +124,8 @@ class AdminBootstrapRunnerTest {
 
         verify(repository, times(2)).bootstrapAdmin("demo_admin", "Administrador Demo", "bcrypt-hash",
                 "BOOTSTRAP_DEMO");
+        verify(repository).changePassword("demo_admin", "bcrypt-hash", "BOOTSTRAP_DEMO");
+        verify(repository).changeState("demo_admin", UserStatus.ACTIVO, "BOOTSTRAP_DEMO");
     }
 
     private AuthProperties enabled(String password) {

@@ -35,8 +35,10 @@ class JwtSecurityTest {
         JwtTokenService service = new JwtTokenService(config.jwtEncoder(properties), properties);
         Jwt decoded = config.jwtDecoder(properties, new JwtUserStateValidator(repository)).decode(service.issue(user).value());
 
-        assertThat(decoded.getClaims().keySet()).containsExactlyInAnyOrder("iss", "sub", "aud", "iat", "exp", "jti", "roles");
+        assertThat(decoded.getClaims().keySet()).containsExactlyInAnyOrder(
+                "iss", "sub", "aud", "iat", "exp", "jti", "roles", "credentialsUpdatedAt");
         assertThat(decoded.getSubject()).isEqualTo("operaciones.demo");
+        assertThat(decoded.getClaimAsString("credentialsUpdatedAt")).isEqualTo(now.minusSeconds(60).toString());
     }
 
     @Test void rejectsExpiredWrongIssuerWrongAudienceAndBadSignature() {
@@ -55,21 +57,23 @@ class JwtSecurityTest {
 
     @Test void databaseStateImmediatelyInvalidatesDisabledChangedCredentialsAndChangedRoles() {
         Instant issued = Instant.now().minusSeconds(30);
+        Instant originalCredentials = issued.minusSeconds(60);
         Jwt jwt = Jwt.withTokenValue("token").header("alg", "HS256").subject("usuario.demo")
-                .issuedAt(issued).expiresAt(issued.plusSeconds(900)).claim("roles", List.of("CONSULTA")).build();
+                .issuedAt(issued).expiresAt(issued.plusSeconds(900)).claim("roles", List.of("CONSULTA"))
+                .claim("credentialsUpdatedAt", originalCredentials.toString()).build();
         JwtUserStateValidator validator = new JwtUserStateValidator(repository);
 
         when(repository.findStateByUsername("usuario.demo")).thenReturn(Optional.of(new AuthUserState(
-                "usuario.demo", UserStatus.DESHABILITADO, null, issued.minusSeconds(60), Set.of(AuthRole.CONSULTA))));
+                "usuario.demo", UserStatus.DESHABILITADO, null, originalCredentials, Set.of(AuthRole.CONSULTA))));
         assertThat(validator.validate(jwt).hasErrors()).isTrue();
         when(repository.findStateByUsername("usuario.demo")).thenReturn(Optional.of(new AuthUserState(
-                "usuario.demo", UserStatus.BLOQUEADO, issued.plusSeconds(600), issued.minusSeconds(60), Set.of(AuthRole.CONSULTA))));
+                "usuario.demo", UserStatus.BLOQUEADO, issued.plusSeconds(600), originalCredentials, Set.of(AuthRole.CONSULTA))));
         assertThat(validator.validate(jwt).hasErrors()).isTrue();
         when(repository.findStateByUsername("usuario.demo")).thenReturn(Optional.of(new AuthUserState(
                 "usuario.demo", UserStatus.ACTIVO, null, issued.plusSeconds(1), Set.of(AuthRole.CONSULTA))));
         assertThat(validator.validate(jwt).hasErrors()).isTrue();
         when(repository.findStateByUsername("usuario.demo")).thenReturn(Optional.of(new AuthUserState(
-                "usuario.demo", UserStatus.ACTIVO, null, issued.minusSeconds(60), Set.of(AuthRole.OPERACIONES))));
+                "usuario.demo", UserStatus.ACTIVO, null, originalCredentials, Set.of(AuthRole.OPERACIONES))));
         assertThat(validator.validate(jwt).hasErrors()).isTrue();
     }
 

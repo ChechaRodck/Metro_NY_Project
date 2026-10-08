@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   BadgeCheck,
   BriefcaseBusiness,
@@ -14,16 +14,17 @@ import ConfirmDeleteModal from "../components/ConfirmDeleteModal";
 import DeleteRecordAction, {
   DeleteRecordNotice,
 } from "../components/DeleteRecordAction";
-import useDeleteRecord, {
-  getSelectionAfterDelete,
-} from "../hooks/useDeleteRecord";
+import useDeleteRecord from "../hooks/useDeleteRecord";
+import ApiState from "../components/ApiState";
+import { hasAnyRole, useAuthSession } from "../auth";
 import {
-  availableRoles,
-  certifications,
-  employees,
-  roles,
-  shifts,
-} from "../data/personnelData";
+  createCertification,
+  createEmployee,
+  createShift,
+  deactivateEmployee,
+  getPersonnel,
+  revokeCertification,
+} from "../services/personnelService";
 import "../styles/personnel.css";
 
 const tabs = [
@@ -65,16 +66,9 @@ const filterOptions = {
     "Suspendido",
     "Inactivo",
   ],
-  roles: ["Todos", "Activo", "Inactivo"],
+  roles: ["Todos", "Sin estado"],
   shifts: ["Todos", "Programado", "Presente", "Ausente", "Tarde"],
   certifications: ["Todos", "Vigente", "Próxima a vencer", "Vencida"],
-};
-
-const prefixes = {
-  employees: "EMP",
-  roles: "CAR",
-  shifts: "TUR",
-  certifications: "CER",
 };
 
 function normalizeText(value) {
@@ -252,7 +246,7 @@ function PersonnelReadings({ type, personnelRecords }) {
     <section className="personnel-service" aria-labelledby="personnel-service-title">
       <header>
         <h3 id="personnel-service-title">Banda de servicio</h3>
-        <p>Lecturas directas de los registros de demostración.</p>
+        <p>Lecturas directas de los registros consultados en Oracle.</p>
       </header>
       <dl className="personnel-readings">
         {readings.map(([label, value]) => (
@@ -830,7 +824,7 @@ function CertificationInspector({ certification, employeeRecords, deleteAction }
 }
 
 function PersonnelInspector({ type, record, personnelRecords, onDelete }) {
-  const deleteAction = record ? (
+  const deleteAction = record && (type === "employees" || type === "certifications") ? (
     <DeleteRecordAction
       id={record.id}
       label={`${tabInformation[type].singular} ${getRecordTitle(record, type)}`}
@@ -889,6 +883,8 @@ function PersonnelInspector({ type, record, personnelRecords, onDelete }) {
 }
 
 export default function PersonnelManagement() {
+  const session = useAuthSession();
+  const canWrite = hasAnyRole(session, ["ADMIN"]);
   const [activeTab, setActiveTab] = useState("employees");
   const [filters, setFilters] = useState({
     employees: { search: "", status: "Todos" },
@@ -900,18 +896,28 @@ export default function PersonnelManagement() {
   const [announcement, setAnnouncement] = useState("");
   const [selectionAnnouncement, setSelectionAnnouncement] = useState("");
   const [personnelRecords, setPersonnelRecords] = useState({
-    employees,
-    roles,
-    shifts,
-    certifications,
+    employees: [], roles: [], shifts: [], certifications: [],
   });
+  const [models, setModels] = useState([]);
+  const [request, setRequest] = useState({ status: "loading", error: null });
+  const [reloadVersion, setReloadVersion] = useState(0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formError, setFormError] = useState("");
   const [selectedIds, setSelectedIds] = useState({
-    employees: employees[0]?.id,
-    roles: roles[0]?.id,
-    shifts: shifts[0]?.id,
-    certifications: certifications[0]?.id,
+    employees: null, roles: null, shifts: null, certifications: null,
   });
   const tabRefs = useRef([]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    getPersonnel({ signal: controller.signal }).then((data) => {
+      setPersonnelRecords({ employees: data.employees, roles: data.roles, shifts: data.shifts, certifications: data.certifications });
+      setModels(data.models);
+      setSelectedIds((current) => Object.fromEntries(Object.entries(data).filter(([key]) => key !== "models").map(([key, records]) => [key, current[key] && records.some((record) => record.id === current[key]) ? current[key] : records[0]?.id ?? null])));
+      setRequest({ status: "success", error: null });
+    }).catch((error) => { if (error?.name !== "AbortError") setRequest({ status: "error", error }); });
+    return () => controller.abort();
+  }, [reloadVersion]);
 
   const activeFilters = filters[activeTab];
   const activeRecords = personnelRecords[activeTab];
@@ -1014,65 +1020,27 @@ export default function PersonnelManagement() {
     );
   }
 
-  function handleCreate(formData) {
-    const generatedId = `${prefixes[activeTab]}-${String(Date.now()).slice(-6)}`;
-    const newRecord = { id: generatedId, ...formData };
-    const isVisible = recordMatches(
-      newRecord,
-      activeTab,
-      activeFilters.search,
-      activeFilters.status,
-    );
-    const label = tabInformation[activeTab].singular;
-
-    setPersonnelRecords((currentRecords) => ({
-      ...currentRecords,
-      [activeTab]: [...currentRecords[activeTab], newRecord],
-    }));
-
-    if (isVisible) {
-      setSelectedIds((currentIds) => ({
-        ...currentIds,
-        [activeTab]: newRecord.id,
-      }));
-      setSelectionAnnouncement(
-        `${label} ${newRecord.id} seleccionado; estado registrado ${getRecordStatus(
-          newRecord,
-          activeTab,
-        )}.`,
-      );
-    }
-
-    setAnnouncement(
-      `El ${label} ${newRecord.id} se agregó solo a esta sesión de demostración; no se almacena de forma persistente.${
-        isVisible ? "" : " Los filtros actuales no incluyen el nuevo registro."
-      }`,
-    );
-    setIsModalOpen(false);
+  async function handleCreate(formData) {
+    if (isSubmitting || activeTab === "roles") return;
+    setIsSubmitting(true); setFormError("");
+    try {
+      if (activeTab === "employees") await createEmployee(formData);
+      else if (activeTab === "shifts") await createShift(formData);
+      else await createCertification(formData);
+      setAnnouncement("El registro se guardó correctamente en Oracle.");
+      setIsModalOpen(false);
+      setRequest({ status: "loading", error: null });
+      setReloadVersion((version) => version + 1);
+    } catch (error) {
+      setFormError(error?.message ?? "No fue posible guardar el registro.");
+    } finally { setIsSubmitting(false); }
   }
 
-  function handleDeleteRecord({ id }) {
-    const nextSelection = getSelectionAfterDelete(
-      filteredRecords,
-      id,
-      selectedRecord?.id,
-    );
-
-    setPersonnelRecords((currentRecords) => ({
-      ...currentRecords,
-      [activeTab]: currentRecords[activeTab].filter(
-        (record) => record.id !== id,
-      ),
-    }));
-    setSelectedIds((currentIds) => ({
-      ...currentIds,
-      [activeTab]: nextSelection,
-    }));
-    setSelectionAnnouncement(
-      nextSelection
-        ? `${tabInformation[activeTab].singular} ${nextSelection} seleccionado después de eliminar el registro.`
-        : "No quedan registros visibles para seleccionar.",
-    );
+  async function handleDeleteRecord({ id }) {
+    if (activeTab === "employees") await deactivateEmployee(id);
+    else if (activeTab === "certifications") await revokeCertification(id);
+    setRequest({ status: "loading", error: null });
+    setReloadVersion((version) => version + 1);
   }
 
   return (
@@ -1080,8 +1048,8 @@ export default function PersonnelManagement() {
       <header className="personnel-heading">
         <div className="personnel-heading__copy">
           <div className="personnel-context" aria-label="Contexto de los datos">
-            <span>Datos de demostración</span>
-            <span>Registro de servicio</span>
+            <span>Fuente: API protegida</span>
+            <span>Datos persistidos en Oracle</span>
           </div>
           <h2 id="personnel-page-title">Personal</h2>
           <p>
@@ -1093,6 +1061,8 @@ export default function PersonnelManagement() {
           type="button"
           className="personnel-primary-button"
           onClick={() => setIsModalOpen(true)}
+          disabled={activeTab === "roles" || !canWrite}
+          title={activeTab === "roles" ? "Los cargos son un catálogo administrado por Oracle" : undefined}
         >
           <CirclePlus size={17} aria-hidden="true" />
           {tabInformation[activeTab].action}
@@ -1103,6 +1073,11 @@ export default function PersonnelManagement() {
         message={deletion.notice}
         onDismiss={deletion.dismissNotice}
       />
+
+      <ApiState status={request.status} error={request.error} onRetry={() => {
+        setRequest({ status: "loading", error: null });
+        setReloadVersion((version) => version + 1);
+      }} />
 
       {announcement && (
         <div
@@ -1122,7 +1097,7 @@ export default function PersonnelManagement() {
         </div>
       )}
 
-      <section className="personnel-desk" aria-label="Registro de personal">
+      <section className="personnel-desk" aria-label="Registro de personal" hidden={request.status !== "success"}>
         <div
           className="personnel-tabs"
           role="tablist"
@@ -1192,7 +1167,7 @@ export default function PersonnelManagement() {
                   type={activeTab}
                   record={selectedRecord}
                   personnelRecords={personnelRecords}
-                  onDelete={deletion.requestDelete}
+                  onDelete={canWrite ? deletion.requestDelete : undefined}
                 />
               </div>
             )}
@@ -1213,8 +1188,13 @@ export default function PersonnelManagement() {
         <PersonnelFormModal
           type={activeTab}
           availableEmployees={personnelRecords.employees}
-          availableRoles={availableRoles}
-          onClose={() => setIsModalOpen(false)}
+          availableRoles={personnelRecords.roles}
+          availableModels={models}
+          isSubmitting={isSubmitting}
+          error={formError}
+          onClose={() => {
+            if (!isSubmitting) setIsModalOpen(false);
+          }}
           onSubmit={handleCreate}
         />
       )}

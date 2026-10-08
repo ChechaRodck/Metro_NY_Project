@@ -25,8 +25,11 @@ public class IncidenteRepository extends BaseRepository {
         return listar("""
                 SELECT i.numero_incidente, i.tipo_incidente, i.descripcion, i.fecha_hora_inicio, i.fecha_hora_fin,
                        i.lugar_afectado, i.severidad, i.estado, i.pasajeros_afectados,
+                       i.causa_identificada, i.acciones_realizadas,
+                       COALESCE(e.nombres || ' ' || e.apellidos, i.reportado_por) AS empleado_reporta,
                        FN_DURACION_INCIDENTE(i.numero_incidente) AS duracion_min
                   FROM INCIDENTE i
+                  LEFT JOIN EMPLEADO e ON e.id_empleado = i.id_empleado_reporta
                  WHERE (? IS NULL OR i.estado = ?)
                    AND (? IS NULL OR i.severidad = ?)
                    AND (? IS NULL OR i.tipo_incidente = ?)

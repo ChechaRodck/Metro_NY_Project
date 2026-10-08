@@ -26,30 +26,27 @@ const formConfigurations = {
         required: true,
       },
       {
-        name: "service",
+        name: "serviceCode",
         label: "Tipo de servicio",
         type: "select",
-        defaultValue: "Local",
-        options: ["Local", "Expreso", "Nocturno", "Especial"],
+        defaultValue: "LOCAL",
+        options: [
+          { value: "LOCAL", label: "Local" },
+          { value: "EXPRESO", label: "Expreso" },
+          { value: "NOCTURNO", label: "Nocturno" },
+          { value: "ESPECIAL", label: "Especial" },
+        ],
       },
       {
-        name: "origin",
+        name: "originId",
         label: "Terminal de origen",
-        placeholder: "Estación de origen",
+        type: "station-select",
         required: true,
       },
       {
-        name: "destination",
+        name: "destinationId",
         label: "Terminal de destino",
-        placeholder: "Estación de destino",
-        required: true,
-      },
-      {
-        name: "stations",
-        label: "Cantidad de estaciones",
-        type: "number",
-        defaultValue: "1",
-        min: "1",
+        type: "station-select",
         required: true,
       },
       {
@@ -60,13 +57,6 @@ const formConfigurations = {
         min: "0.1",
         step: "0.1",
         required: true,
-      },
-      {
-        name: "status",
-        label: "Estado operativo",
-        type: "select",
-        defaultValue: "Operativa",
-        options: ["Operativa", "Con demoras", "Mantenimiento"],
       },
     ],
   },
@@ -101,10 +91,21 @@ const formConfigurations = {
         ],
       },
       {
-        name: "lines",
-        label: "Líneas asociadas",
-        placeholder: "Ejemplo: A, 1, 7",
+        name: "address",
+        label: "Dirección",
+        placeholder: "Dirección registrada",
         required: true,
+      },
+      {
+        name: "stationType",
+        label: "Tipo de estación",
+        type: "select",
+        defaultValue: "SUBTERRANEA",
+        options: [
+          { value: "SUBTERRANEA", label: "Subterránea" },
+          { value: "ELEVADA", label: "Elevada" },
+          { value: "SUPERFICIE", label: "Superficie" },
+        ],
       },
       {
         name: "platforms",
@@ -132,13 +133,6 @@ const formConfigurations = {
           { value: "false", label: "No disponible" },
         ],
       },
-      {
-        name: "status",
-        label: "Estado operativo",
-        type: "select",
-        defaultValue: "Operativa",
-        options: ["Operativa", "Mantenimiento"],
-      },
     ],
   },
 
@@ -159,27 +153,27 @@ const formConfigurations = {
         required: true,
       },
       {
-        name: "origin",
+        name: "originId",
         label: "Estación de origen",
-        placeholder: "Estación de origen",
+        type: "station-select",
         required: true,
       },
       {
-        name: "destination",
+        name: "destinationId",
         label: "Estación de destino",
-        placeholder: "Estación de destino",
+        type: "station-select",
         required: true,
       },
       {
         name: "direction",
         label: "Sentido del recorrido",
         type: "select",
-        defaultValue: "Norte → Sur",
+        defaultValue: "NORTE_SUR",
         options: [
-          "Norte → Sur",
-          "Sur → Norte",
-          "Este → Oeste",
-          "Oeste → Este",
+          { value: "NORTE_SUR", label: "Norte → Sur" },
+          { value: "SUR_NORTE", label: "Sur → Norte" },
+          { value: "ESTE_OESTE", label: "Este → Oeste" },
+          { value: "OESTE_ESTE", label: "Oeste → Este" },
         ],
       },
       {
@@ -206,22 +200,17 @@ const formConfigurations = {
         min: "1",
         required: true,
       },
-      {
-        name: "status",
-        label: "Estado",
-        type: "select",
-        defaultValue: "Activa",
-        options: ["Activa", "Con demoras", "Servicio parcial"],
-      },
     ],
   },
 };
 
-function createInitialValues(fields, availableLines) {
+function createInitialValues(fields, availableLines, availableStations) {
   return fields.reduce((values, field) => {
     values[field.name] =
       field.type === "line-select"
         ? availableLines[0]?.id ?? ""
+        : field.type === "station-select"
+          ? String(availableStations[0]?.apiId ?? "")
         : field.defaultValue ?? "";
 
     return values;
@@ -231,6 +220,9 @@ function createInitialValues(fields, availableLines) {
 function NetworkFormModal({
   type,
   availableLines,
+  availableStations = [],
+  isSubmitting = false,
+  error = "",
   onClose,
   onSubmit,
 }) {
@@ -239,17 +231,24 @@ function NetworkFormModal({
   const initialFocusRef = useRef(null);
 
   const [formValues, setFormValues] = useState(() =>
-    createInitialValues(configuration.fields, availableLines),
+    createInitialValues(configuration.fields, availableLines, availableStations),
   );
 
   useEffect(() => {
     const previouslyFocusedElement = document.activeElement;
     const page = document.querySelector(".network-page");
-    const backgroundElements = page
+    const shellBackgroundElements = Array.from(
+      document.querySelectorAll(".app-shell > .sidebar, .main-area > .topbar"),
+    );
+    const pageBackgroundElements = page
       ? Array.from(page.children).filter(
           (element) => !element.classList.contains("network-modal-backdrop"),
         )
       : [];
+    const backgroundElements = [
+      ...shellBackgroundElements,
+      ...pageBackgroundElements,
+    ];
     const backgroundState = backgroundElements.map((element) => ({
       element,
       hadInert: element.hasAttribute("inert"),
@@ -361,7 +360,6 @@ function NetworkFormModal({
       newRecord = {
         ...formValues,
         id: formValues.id.toUpperCase(),
-        stations: Number(formValues.stations),
         length: Number(formValues.length),
       };
     }
@@ -369,10 +367,6 @@ function NetworkFormModal({
     if (type === "stations") {
       newRecord = {
         ...formValues,
-        lines: formValues.lines
-          .split(",")
-          .map((line) => line.trim().toUpperCase())
-          .filter(Boolean),
         platforms: Number(formValues.platforms),
         accesses: Number(formValues.accesses),
         accessible: formValues.accessible === "true",
@@ -383,6 +377,8 @@ function NetworkFormModal({
       newRecord = {
         ...formValues,
         id: formValues.id.toUpperCase(),
+        directionCode: formValues.direction,
+        serviceCode: formValues.service.toUpperCase(),
         distance: Number(formValues.distance),
         duration: Number(formValues.duration),
       };
@@ -433,6 +429,18 @@ function NetworkFormModal({
       );
     }
 
+    if (field.type === "station-select") {
+      return (
+        <select {...commonProperties}>
+          {availableStations.map((station) => (
+            <option value={station.apiId} key={station.apiId}>
+              {station.name}
+            </option>
+          ))}
+        </select>
+      );
+    }
+
     return (
       <input
         {...commonProperties}
@@ -477,7 +485,7 @@ function NetworkFormModal({
           </button>
         </header>
 
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} aria-busy={isSubmitting || undefined}>
           <div className="network-form-grid">
             {configuration.fields.map((field, index) => (
               <label
@@ -497,17 +505,20 @@ function NetworkFormModal({
             ))}
           </div>
 
+          {error && <p className="network-form-error" role="alert">{error}</p>}
+
           <footer className="network-modal__footer">
             <button
               type="button"
               className="network-modal__cancel"
               onClick={onClose}
+              disabled={isSubmitting}
             >
               Cancelar
             </button>
 
-            <button type="submit" className="network-modal__save">
-              Guardar registro
+            <button type="submit" className="network-modal__save" disabled={isSubmitting}>
+              {isSubmitting ? "Guardando…" : "Guardar registro"}
             </button>
           </footer>
         </form>

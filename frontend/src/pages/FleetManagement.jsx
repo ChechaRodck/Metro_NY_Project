@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Accessibility,
   CircleCheck,
@@ -16,10 +16,10 @@ import ConfirmDeleteModal from "../components/ConfirmDeleteModal";
 import DeleteRecordAction, {
   DeleteRecordNotice,
 } from "../components/DeleteRecordAction";
-import useDeleteRecord, {
-  getSelectionAfterDelete,
-} from "../hooks/useDeleteRecord";
-import { deposits, trains, wagons } from "../data/fleetData";
+import useDeleteRecord from "../hooks/useDeleteRecord";
+import ApiState from "../components/ApiState";
+import { hasAnyRole, useAuthSession } from "../auth";
+import { createTrain, createWagon, getFleet, retireTrain, retireWagon } from "../services/fleetService";
 import "../styles/fleet.css";
 
 const tabs = [
@@ -321,7 +321,7 @@ function FleetAttention({ type, records }) {
       <header className="fleet-attention__header">
         <div>
           <h3 id={headingId}>Índice del patio</h3>
-          <p>Lecturas derivadas del inventario de demostración.</p>
+          <p>Lecturas derivadas del inventario registrado en Oracle.</p>
         </div>
       </header>
 
@@ -553,14 +553,13 @@ function AssociatedWagons({ train, wagons: wagonRecords }) {
       </header>
 
       <p className="fleet-associations__model-note">
-        La posición pertenece a los datos de demostración del frontend; la
-        relación TREN_VAGON de Oracle no registra un orden.
+        La posición procede de la composición vigente registrada en TREN_VAGON.
       </p>
 
       {associatedWagons.length > 0 ? (
         <ol className="fleet-consist">
           {associatedWagons.map((wagon) => (
-            <li value={wagon.position} key={wagon.id}>
+            <li value={wagon.position ?? undefined} key={wagon.id}>
               <span className="fleet-consist__position">
                 Posición {wagon.position}
               </span>
@@ -673,15 +672,14 @@ function WagonInspector({ wagon, trainRecords, deleteAction }) {
               ? `${assignedTrain.id} · ${assignedTrain.model}`
               : wagon.train || "Sin asociación registrada"}
           </TechnicalItem>
-          <TechnicalItem label="Posición registrada en el demo" wide>
-            {wagon.position}
+          <TechnicalItem label="Posición en la composición vigente" wide>
+            {wagon.position ?? "Sin posición registrada"}
           </TechnicalItem>
         </dl>
       </div>
 
       <p className="fleet-inspector__schema-note">
-        La posición pertenece al inventario de demostración del frontend y no
-        está representada en la relación TREN_VAGON del modelo Oracle actual.
+        La posición se consulta en la relación TREN_VAGON del modelo Oracle.
       </p>
     </>
   );
@@ -752,7 +750,7 @@ function DepositInspector({ deposit, trainRecords, deleteAction }) {
         </header>
 
         <p className="fleet-associations__model-note">
-          La relación declarada compara datos de demostración; no representa
+          La relación declarada compara registros persistidos; no representa
           ocupación actual ni utilización en tiempo real.
         </p>
 
@@ -787,7 +785,7 @@ function DepositInspector({ deposit, trainRecords, deleteAction }) {
 
 function FleetInspector({ type, record, fleetRecords, onDelete }) {
   const inspectorId = `fleet-technical-inspector-${type}`;
-  const deleteAction = record ? (
+  const deleteAction = record && type !== "deposits" ? (
     <DeleteRecordAction
       id={record.id}
       label={`${recordLabels[type].singular} ${getRecordTitle(record, type)}`}
@@ -842,6 +840,8 @@ function FleetInspector({ type, record, fleetRecords, onDelete }) {
 }
 
 function FleetManagement() {
+  const session = useAuthSession();
+  const canWrite = hasAnyRole(session, ["ADMIN", "MANTENIMIENTO"]);
   const [activeTab, setActiveTab] = useState("trains");
   const [filters, setFilters] = useState({
     trains: { search: "", status: "Todos" },
@@ -851,13 +851,35 @@ function FleetManagement() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [announcement, setAnnouncement] = useState("");
   const [selectionAnnouncement, setSelectionAnnouncement] = useState("");
-  const [fleetRecords, setFleetRecords] = useState({ trains, wagons, deposits });
+  const [fleetRecords, setFleetRecords] = useState({ trains: [], wagons: [], deposits: [] });
+  const [models, setModels] = useState([]);
+  const [request, setRequest] = useState({ status: "loading", error: null });
+  const [reloadVersion, setReloadVersion] = useState(0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formError, setFormError] = useState("");
   const [selectedIds, setSelectedIds] = useState({
-    trains: getPreferredRecordId(trains),
-    wagons: getPreferredRecordId(wagons),
-    deposits: getPreferredRecordId(deposits),
+    trains: null,
+    wagons: null,
+    deposits: null,
   });
   const tabRefs = useRef([]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    getFleet({ signal: controller.signal }).then((data) => {
+      setFleetRecords({ trains: data.trains, wagons: data.wagons, deposits: data.deposits });
+      setModels(data.models);
+      setSelectedIds((current) => ({
+        trains: current.trains && data.trains.some((record) => record.id === current.trains) ? current.trains : getPreferredRecordId(data.trains),
+        wagons: current.wagons && data.wagons.some((record) => record.id === current.wagons) ? current.wagons : getPreferredRecordId(data.wagons),
+        deposits: current.deposits && data.deposits.some((record) => record.id === current.deposits) ? current.deposits : getPreferredRecordId(data.deposits),
+      }));
+      setRequest({ status: "success", error: null });
+    }).catch((error) => {
+      if (error?.name !== "AbortError") setRequest({ status: "error", error });
+    });
+    return () => controller.abort();
+  }, [reloadVersion]);
 
   const activeFilters = filters[activeTab];
   const activeRecords = fleetRecords[activeTab];
@@ -958,60 +980,26 @@ function FleetManagement() {
     );
   }
 
-  function handleCreate(newRecord) {
-    const isVisible = recordMatches(
-      newRecord,
-      activeTab,
-      activeFilters.search,
-      activeFilters.status,
-    );
-    const label = recordLabels[activeTab].singular;
-
-    setFleetRecords((currentRecords) => ({
-      ...currentRecords,
-      [activeTab]: [...currentRecords[activeTab], newRecord],
-    }));
-
-    if (isVisible) {
-      setSelectedIds((currentIds) => ({
-        ...currentIds,
-        [activeTab]: newRecord.id,
-      }));
-      setSelectionAnnouncement(
-        `${label} ${newRecord.id} seleccionado; estado ${newRecord.status}.`,
-      );
-    }
-
-    setAnnouncement(
-      `El ${label} ${newRecord.id} se agregó a esta sesión de demostración; no se almacena de forma persistente.${
-        isVisible ? "" : " Los filtros actuales no incluyen el nuevo registro."
-      }`,
-    );
-    setIsFormOpen(false);
+  async function handleCreate(newRecord) {
+    if (isSubmitting || activeTab === "deposits") return;
+    setIsSubmitting(true); setFormError("");
+    try {
+      if (activeTab === "trains") await createTrain(newRecord);
+      else await createWagon(newRecord);
+      setAnnouncement("El registro se guardó correctamente en Oracle.");
+      setIsFormOpen(false);
+      setRequest({ status: "loading", error: null });
+      setReloadVersion((version) => version + 1);
+    } catch (error) {
+      setFormError(error?.message ?? "No fue posible guardar el registro.");
+    } finally { setIsSubmitting(false); }
   }
 
-  function handleDeleteRecord({ id }) {
-    const nextSelection = getSelectionAfterDelete(
-      filteredRecords,
-      id,
-      selectedRecord?.id,
-    );
-
-    setFleetRecords((currentRecords) => ({
-      ...currentRecords,
-      [activeTab]: currentRecords[activeTab].filter(
-        (record) => record.id !== id,
-      ),
-    }));
-    setSelectedIds((currentIds) => ({
-      ...currentIds,
-      [activeTab]: nextSelection,
-    }));
-    setSelectionAnnouncement(
-      nextSelection
-        ? `${recordLabels[activeTab].singular} ${nextSelection} seleccionado después de eliminar el registro.`
-        : `No quedan ${recordLabels[activeTab].plural} visibles para seleccionar.`,
-    );
+  async function handleDeleteRecord({ id }) {
+    if (activeTab === "trains") await retireTrain(id);
+    else if (activeTab === "wagons") await retireWagon(id);
+    setRequest({ status: "loading", error: null });
+    setReloadVersion((version) => version + 1);
   }
 
   return (
@@ -1019,8 +1007,8 @@ function FleetManagement() {
       <header className="fleet-heading">
         <div className="fleet-heading__copy">
           <div className="fleet-context" aria-label="Contexto de los datos">
-            <span>Inventario de demostración</span>
-            <span>Material rodante</span>
+            <span>Fuente: API protegida</span>
+            <span>Datos persistidos en Oracle</span>
           </div>
           <h2 id="fleet-page-title">Trenes y vagones</h2>
           <p>
@@ -1033,6 +1021,8 @@ function FleetManagement() {
           type="button"
           className="fleet-primary-button"
           onClick={() => setIsFormOpen(true)}
+          disabled={activeTab === "deposits" || !canWrite}
+          title={activeTab === "deposits" ? "El backend no ofrece alta de depósitos" : undefined}
         >
           <CirclePlus size={17} aria-hidden="true" />
           {actionLabels[activeTab]}
@@ -1044,7 +1034,12 @@ function FleetManagement() {
         onDismiss={deletion.dismissNotice}
       />
 
-      <section className="fleet-yard" aria-label="Patio técnico de material rodante">
+      <ApiState status={request.status} error={request.error} onRetry={() => {
+        setRequest({ status: "loading", error: null });
+        setReloadVersion((version) => version + 1);
+      }} />
+
+      <section className="fleet-yard" aria-label="Patio técnico de material rodante" hidden={request.status !== "success"}>
         <div
           className="fleet-tabs"
           role="tablist"
@@ -1109,7 +1104,7 @@ function FleetManagement() {
                   type={activeTab}
                   record={selectedRecord}
                   fleetRecords={fleetRecords}
-                  onDelete={deletion.requestDelete}
+                  onDelete={canWrite ? deletion.requestDelete : undefined}
                 />
               </div>
             )}
@@ -1139,7 +1134,12 @@ function FleetManagement() {
           type={activeTab}
           availableTrains={fleetRecords.trains}
           availableDeposits={fleetRecords.deposits}
-          onClose={() => setIsFormOpen(false)}
+          availableModels={models}
+          isSubmitting={isSubmitting}
+          error={formError}
+          onClose={() => {
+            if (!isSubmitting) setIsFormOpen(false);
+          }}
           onSubmit={handleCreate}
         />
       )}

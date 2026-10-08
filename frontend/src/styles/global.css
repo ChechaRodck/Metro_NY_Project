@@ -25,6 +25,29 @@
   --motion-ease-dispatch: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+.api-state {
+  display: grid;
+  justify-items: start;
+  gap: 0.75rem;
+  padding: 1.25rem;
+  color: var(--text-secondary, #aebbd0);
+  border: 1px solid var(--border-color, rgba(148, 163, 184, 0.22));
+  border-radius: 0.75rem;
+  background: var(--surface-muted, rgba(15, 29, 48, 0.72));
+}
+
+.api-state p { margin: 0; }
+.api-state--error { color: var(--danger-text, #fecaca); }
+.api-state button {
+  min-height: 2.5rem;
+  padding: 0.55rem 0.9rem;
+  color: inherit;
+  border: 1px solid currentColor;
+  border-radius: 0.5rem;
+  background: transparent;
+  cursor: pointer;
+}
+
 html:has(.app-shell) {
   --auth-stage: #050b14;
   --auth-chassis: #0b1424;

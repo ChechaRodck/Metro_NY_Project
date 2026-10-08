@@ -25,7 +25,7 @@ class EndpointAuthorizationPolicyTest {
     private static final EndpointAuthorizationPolicy POLICY = new EndpointAuthorizationPolicy();
     private static final Class<?>[] BUSINESS_CONTROLLERS = {EstacionController.class, IncidenteController.class,
             LineaController.class, MantenimientoController.class, PasajeroController.class, PersonalController.class,
-            ReporteController.class, RutaController.class, TarifaController.class, TarjetaController.class,
+            OperationalQueryController.class, ReporteController.class, RutaController.class, TarifaController.class, TarjetaController.class,
             TrenController.class, ViajeController.class};
 
     static Stream<EndpointAuthorizationPolicy.EndpointRule> businessRules() {
@@ -43,14 +43,14 @@ class EndpointAuthorizationPolicyTest {
     }
 
     @Test
-    void registryClassifiesExactlyAll151CurrentControllerMappings() {
+    void registryClassifiesEveryCurrentControllerMapping() {
         Set<String> controllerMappings = mappingsFromControllers();
         Set<String> policyMappings = new HashSet<>();
         POLICY.rules().stream().filter(EndpointAuthorizationPolicy.EndpointRule::existingBusiness)
                 .forEach(rule -> policyMappings.add(rule.method() + " " + rule.path()));
 
-        assertThat(POLICY.existingBusinessRuleCount()).isEqualTo(151);
-        assertThat(policyMappings).hasSize(151).isEqualTo(controllerMappings);
+        assertThat(POLICY.existingBusinessRuleCount()).isEqualTo(157);
+        assertThat(policyMappings).hasSize(157).isEqualTo(controllerMappings);
     }
 
     @Test

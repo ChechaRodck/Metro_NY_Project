@@ -1,6 +1,6 @@
 import { useRef } from "react";
 import { createPortal } from "react-dom";
-import { TriangleAlert, Trash2, X } from "lucide-react";
+import { CheckCircle2, TriangleAlert, X } from "lucide-react";
 import useModalLifecycle from "../hooks/useModalLifecycle";
 import "../styles/record-deletion.css";
 
@@ -51,9 +51,9 @@ function ConfirmDeleteModal({
             <TriangleAlert />
           </span>
           <div>
-            <h2 id="record-delete-title">Eliminar registro</h2>
+            <h2 id="record-delete-title">Confirmar cambio de estado</h2>
             <p id="record-delete-description">
-              ¿Deseas eliminar <strong>“{target.label}”</strong>?
+              ¿Deseas aplicar el cambio a <strong>“{target.label}”</strong>?
             </p>
           </div>
           <button
@@ -69,11 +69,10 @@ function ConfirmDeleteModal({
 
         <div className="record-delete-modal__body">
           <p id="record-delete-consequence">
-            Esta acción no se puede deshacer durante esta sesión.
+            La operación conservará el historial y cambiará el estado registrado.
           </p>
           <p id="record-delete-session-note" className="record-delete-modal__note">
-            La eliminación es local y temporal. Los datos originales no serán
-            modificados y el registro reaparecerá al recargar.
+            El backend validará la autorización y persistirá el cambio en Oracle.
           </p>
           {error && (
             <p className="record-delete-modal__error" role="alert">
@@ -99,8 +98,8 @@ function ConfirmDeleteModal({
             disabled={isDeleting}
             aria-busy={isDeleting || undefined}
           >
-            <Trash2 aria-hidden="true" />
-            {isDeleting ? "Eliminando…" : "Eliminar"}
+            <CheckCircle2 aria-hidden="true" />
+            {isDeleting ? "Confirmando…" : "Confirmar"}
           </button>
         </footer>
       </section>
