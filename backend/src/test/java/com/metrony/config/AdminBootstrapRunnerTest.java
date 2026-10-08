@@ -1,6 +1,7 @@
 package com.metrony.config;
 
 import com.metrony.auth.PasswordPolicy;
+import com.metrony.auth.UserStatus;
 import com.metrony.repository.AuthRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.DefaultApplicationArguments;
@@ -80,6 +81,8 @@ class AdminBootstrapRunnerTest {
         verify(repository, never()).countUsers();
         verify(repository).bootstrapAdmin(eq("demo_admin"), eq("Administrador Demo"), hash.capture(),
                 eq("BOOTSTRAP_DEMO"));
+        verify(repository, never()).changePassword(anyString(), anyString(), anyString());
+        verify(repository, never()).changeState(anyString(), any(), anyString());
         assertThat(hash.getValue()).startsWith("$2a$12$").isNotEqualTo("TrenSeguro#2026!");
         assertThat(encoder.matches("TrenSeguro#2026!", hash.getValue())).isTrue();
     }
@@ -102,6 +105,8 @@ class AdminBootstrapRunnerTest {
 
         verify(repository, times(2)).bootstrapAdmin("demo_admin", "Administrador Demo", "bcrypt-hash",
                 "BOOTSTRAP_DEMO");
+        verify(repository).changePassword("demo_admin", "bcrypt-hash", "BOOTSTRAP_DEMO");
+        verify(repository).changeState("demo_admin", UserStatus.ACTIVO, "BOOTSTRAP_DEMO");
     }
 
     private AuthProperties enabled(String password) {
