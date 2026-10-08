@@ -19,7 +19,7 @@ class DemoAuthProfileTest {
             AuthProperties.Bootstrap bootstrap = context.getBean(AuthProperties.class).getBootstrap();
             assertThat(bootstrap.isEnabled()).isTrue();
             assertThat(bootstrap.getUsername()).isEqualTo("demo_admin");
-            assertThat(bootstrap.getPassword()).isEqualTo("MetroNY-Demo-2026!");
+            assertThat(bootstrap.getPassword()).isEqualTo("TrenSeguro#2026!");
             assertThat(bootstrap.getDisplayName()).isEqualTo("Administrador Demo");
         });
     }

@@ -19,4 +19,12 @@ class PasswordPolicyTest {
         assertThatCode(() -> policy.validateNewPassword("Clave-Larga-Segura-2026", "usuario"))
                 .doesNotThrowAnyException();
     }
+
+    @Test void acceptsTheExactSharedDemoCredentials() {
+        String username = policy.validateUsername("demo_admin");
+
+        assertThat(username).isEqualTo("demo_admin");
+        assertThatCode(() -> policy.validateNewPassword("TrenSeguro#2026!", username))
+                .doesNotThrowAnyException();
+    }
 }
