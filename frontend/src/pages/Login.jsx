@@ -21,7 +21,7 @@ const STATION_EMPHASIS_RADIUS = 0.22;
 const DEMO_ACCESS = import.meta.env.DEV
   ? {
       username: "demo_admin",
-      password: "MetroNY-Demo-2026!",
+      password: "TrenSeguro#2026!",
     }
   : null;
 

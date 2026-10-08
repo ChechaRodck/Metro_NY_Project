@@ -64,7 +64,7 @@ class AdminBootstrapRunnerTest {
     }
 
     @Test void demoProfileCreatesAdminWithBcryptHashWithoutInspectingOtherUsers() {
-        AuthProperties properties = enabled("MetroNY-Demo-2026!");
+        AuthProperties properties = enabled("TrenSeguro#2026!");
         properties.getBootstrap().setUsername("demo_admin");
         properties.getBootstrap().setDisplayName("Administrador Demo");
         AuthRepository repository = mock(AuthRepository.class);
@@ -80,12 +80,12 @@ class AdminBootstrapRunnerTest {
         verify(repository, never()).countUsers();
         verify(repository).bootstrapAdmin(eq("demo_admin"), eq("Administrador Demo"), hash.capture(),
                 eq("BOOTSTRAP_DEMO"));
-        assertThat(hash.getValue()).startsWith("$2a$12$").isNotEqualTo("MetroNY-Demo-2026!");
-        assertThat(encoder.matches("MetroNY-Demo-2026!", hash.getValue())).isTrue();
+        assertThat(hash.getValue()).startsWith("$2a$12$").isNotEqualTo("TrenSeguro#2026!");
+        assertThat(encoder.matches("TrenSeguro#2026!", hash.getValue())).isTrue();
     }
 
     @Test void demoProfileDelegatesIdempotentlyToTheAdminBootstrap() {
-        AuthProperties properties = enabled("MetroNY-Demo-2026!");
+        AuthProperties properties = enabled("TrenSeguro#2026!");
         properties.getBootstrap().setUsername("demo_admin");
         properties.getBootstrap().setDisplayName("Administrador Demo");
         AuthRepository repository = mock(AuthRepository.class);
@@ -93,7 +93,7 @@ class AdminBootstrapRunnerTest {
                 .thenReturn(new AuthRepository.BootstrapResult(8, true),
                         new AuthRepository.BootstrapResult(8, false));
         PasswordEncoder encoder = mock(PasswordEncoder.class);
-        when(encoder.encode("MetroNY-Demo-2026!")).thenReturn("bcrypt-hash");
+        when(encoder.encode("TrenSeguro#2026!")).thenReturn("bcrypt-hash");
         AdminBootstrapRunner runner = new AdminBootstrapRunner(properties, repository, new PasswordPolicy(), encoder,
                 new MockEnvironment().withProperty("spring.profiles.active", "demo"));
 
