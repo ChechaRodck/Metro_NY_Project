@@ -24,6 +24,25 @@ class AdminBootstrapRunnerTest {
         verifyNoInteractions(repository);
     }
 
+    @Test void demoProfileRunsEvenWhenTheGenericBootstrapFlagIsOverriddenOff() {
+        AuthProperties properties = new AuthProperties();
+        properties.getBootstrap().setUsername("demo_admin");
+        properties.getBootstrap().setPassword("TrenSeguro#2026!");
+        properties.getBootstrap().setDisplayName("Administrador Demo");
+        AuthRepository repository = mock(AuthRepository.class);
+        when(repository.bootstrapAdmin(anyString(), anyString(), anyString(), anyString()))
+                .thenReturn(new AuthRepository.BootstrapResult(8, true));
+        PasswordEncoder encoder = mock(PasswordEncoder.class);
+        when(encoder.encode("TrenSeguro#2026!")).thenReturn("bcrypt-hash");
+
+        new AdminBootstrapRunner(properties, repository, new PasswordPolicy(), encoder,
+                new MockEnvironment().withProperty("spring.profiles.active", "demo"))
+                .run(new DefaultApplicationArguments());
+
+        verify(repository).bootstrapAdmin("demo_admin", "Administrador Demo", "bcrypt-hash",
+                "BOOTSTRAP_DEMO");
+    }
+
     @Test void enabledBootstrapRefusesToOverwriteExistingUsers() {
         AuthProperties properties = enabled("Administrador-Seguro-2026");
         AuthRepository repository = mock(AuthRepository.class); when(repository.countUsers()).thenReturn(1L);

@@ -19,6 +19,12 @@ class DemoBootstrapProcedureContractTest {
         assertThat(procedure)
                 .contains("WHERE codigo = 'ADMIN' AND estado = 'ACTIVO'")
                 .contains("WHERE nombre_usuario = p_nombre_usuario")
+                .contains("p_nombre_usuario <> 'demo_admin'")
+                .contains("IF p_actor = 'BOOTSTRAP_DEMO' THEN")
+                .contains("hash_contrasena = p_hash")
+                .contains("estado = 'ACTIVO'")
+                .contains("intentos_fallidos = 0")
+                .contains("bloqueado_hasta = NULL")
                 .contains("p_creado := 'N'")
                 .contains("INSERT INTO USUARIO_ROL")
                 .contains("AND NVL(p_actor, 'BOOTSTRAP') <> 'BOOTSTRAP_DEMO'");

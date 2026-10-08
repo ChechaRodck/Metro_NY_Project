@@ -33,8 +33,8 @@ public class AdminBootstrapRunner implements ApplicationRunner {
     @Transactional
     public void run(ApplicationArguments args) {
         AuthProperties.Bootstrap bootstrap = properties.getBootstrap();
-        if (!bootstrap.isEnabled()) return;
         boolean demoProfile = environment.matchesProfiles("demo");
+        if (!bootstrap.isEnabled() && !demoProfile) return;
         if (!demoProfile && repository.countUsers() > 0) {
             log.info("Bootstrap administrativo omitido: ya existen usuarios."); return;
         }
