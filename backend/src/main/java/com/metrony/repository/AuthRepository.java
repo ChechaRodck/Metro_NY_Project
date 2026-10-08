@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+import org.springframework.transaction.annotation.Transactional;
 
 @Repository
 public class AuthRepository {
@@ -32,7 +33,7 @@ public class AuthRepository {
 
     public AuthRepository(JdbcTemplate jdbc) { this.jdbc = jdbc; }
 
-    public Optional<AuthUser> findByUsername(String username) {
+public Optional<AuthUser> findByUsername(String username) {
         List<AuthUser> users = jdbc.query("""
                 SELECT id_usuario, nombre_usuario, nombre_mostrar, hash_contrasena, estado,
                        intentos_fallidos, inicio_ventana_fallos, bloqueado_hasta,
@@ -48,6 +49,7 @@ public class AuthRepository {
         return users.stream().findFirst();
     }
 
+    @Transactional(readOnly = true)
     public Optional<AuthUserState> findStateByUsername(String username) {
         List<AuthUserState> states = jdbc.query("""
                 SELECT id_usuario, nombre_usuario, estado, bloqueado_hasta, credenciales_actualizadas_en
