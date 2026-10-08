@@ -16,6 +16,7 @@ import java.util.UUID;
 
 @Service
 public class JwtTokenService {
+    static final String CREDENTIALS_UPDATED_CLAIM = "credentialsUpdatedAt";
     private final JwtEncoder encoder;
     private final JwtProperties properties;
     private final Clock clock;
@@ -32,13 +33,15 @@ public class JwtTokenService {
     public IssuedToken issue(AuthUser user) {
         Instant issuedAt = clock.instant();
         Instant expiresAt = issuedAt.plus(properties.getAccessTokenTtl());
-        JwtClaimsSet claims = JwtClaimsSet.builder()
+        JwtClaimsSet.Builder claims = JwtClaimsSet.builder()
                 .issuer(properties.getIssuer()).audience(java.util.List.of(properties.getAudience()))
                 .subject(user.username()).issuedAt(issuedAt).expiresAt(expiresAt).id(UUID.randomUUID().toString())
-                .claim("roles", user.roles().stream().map(Enum::name).sorted().toList())
-                .build();
+                .claim("roles", user.roles().stream().map(Enum::name).sorted().toList());
+        if (user.credentialsUpdatedAt() != null) {
+            claims.claim(CREDENTIALS_UPDATED_CLAIM, user.credentialsUpdatedAt().toString());
+        }
         JwsHeader header = JwsHeader.with(MacAlgorithm.HS256).build();
-        String token = encoder.encode(JwtEncoderParameters.from(header, claims)).getTokenValue();
+        String token = encoder.encode(JwtEncoderParameters.from(header, claims.build())).getTokenValue();
         return new IssuedToken(token, expiresAt, properties.getAccessTokenTtl().toSeconds());
     }
 

@@ -7,7 +7,6 @@ import com.metrony.repository.RutaRepository;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -45,11 +44,11 @@ class OperationalQueryServiceTest {
                 Map.entry("idLinea", "A"), Map.entry("diaSemana", "LUN-VIE"),
                 Map.entry("horaInicio", "05:00"), Map.entry("horaFin", "23:00"),
                 Map.entry("frecuenciaMin", 8), Map.entry("tipoServicio", "LOCAL"),
-                Map.entry("fechaInicioVigor", LocalDate.of(2026, 1, 1)), Map.entry("estado", "ACTIVO"))));
+                Map.entry("fechaInicioVigor", LocalDateTime.of(2026, 1, 1, 0, 0)), Map.entry("estado", "ACTIVO"))));
         when(personal.listarCertificaciones()).thenReturn(List.of(Map.ofEntries(
                 Map.entry("idCertificacion", 9), Map.entry("idEmpleado", 3), Map.entry("empleado", "Ana Metro"),
-                Map.entry("tipoCertificacion", "CONDUCCION"), Map.entry("fechaEmision", LocalDate.of(2025, 1, 1)),
-                Map.entry("fechaVencimiento", LocalDate.of(2027, 1, 1)), Map.entry("institucionEmisora", "Metro NY"),
+                Map.entry("tipoCertificacion", "CONDUCCION"), Map.entry("fechaEmision", LocalDateTime.of(2025, 1, 1, 0, 0)),
+                Map.entry("fechaVencimiento", LocalDateTime.of(2027, 1, 1, 0, 0)), Map.entry("institucionEmisora", "Metro NY"),
                 Map.entry("modelos", "R160"), Map.entry("estado", "VIGENTE"))));
 
         assertThat(service.schedules()).singleElement().satisfies(schedule -> {
@@ -84,7 +83,7 @@ class OperationalQueryServiceTest {
                 Map.entry("numeroTarjeta", fullNumber), Map.entry("idPasajero", 2),
                 Map.entry("pasajero", "Usuario QA"), Map.entry("codigoTarifa", "VI-REG"),
                 Map.entry("tarifa", "Viaje individual"), Map.entry("tipoProducto", "VIAJE_INDIVIDUAL"),
-                Map.entry("saldo", new BigDecimal("10.00")), Map.entry("fechaEmision", LocalDate.of(2026, 1, 1)),
+                Map.entry("saldo", new BigDecimal("10.00")), Map.entry("fechaEmision", LocalDateTime.of(2026, 1, 1, 0, 0)),
                 Map.entry("estado", "ACTIVA"))));
         when(pasajeros.listarRecargas()).thenReturn(List.of(Map.ofEntries(
                 Map.entry("numeroTransaccion", 15), Map.entry("numeroTarjeta", fullNumber),

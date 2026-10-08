@@ -162,6 +162,7 @@ public class OperationalQueryService {
         Object value = row.get(key);
         if (value == null) return null;
         if (value instanceof LocalDate date) return date;
+        if (value instanceof LocalDateTime dateTime) return dateTime.toLocalDate();
         return LocalDate.parse(value.toString());
     }
 

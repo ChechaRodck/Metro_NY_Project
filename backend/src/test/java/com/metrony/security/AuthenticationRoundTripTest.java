@@ -80,7 +80,7 @@ class AuthenticationRoundTripTest {
 
     @Test
     void freshlyIssuedLoginTokenAuthenticatesProtectedRequestWithOracleUtcTimestamp() throws Exception {
-        Instant credentialsUpdated = Instant.now().minusSeconds(60).truncatedTo(ChronoUnit.MICROS);
+        Instant credentialsUpdated = Instant.now().truncatedTo(ChronoUnit.MICROS);
         Instant mappedCredentialsUpdated = mapLikeAuthRepository(credentialsUpdated);
         AuthUser user = new AuthUser(1L, USERNAME, "Administrador de prueba",
                 passwordEncoder.encode(PASSWORD), UserStatus.ACTIVO, 0, null, null,

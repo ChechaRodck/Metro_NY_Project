@@ -43,7 +43,8 @@ public class JwtUserStateValidator implements OAuth2TokenValidator<Jwt> {
         }
         if (state == null || state.status() != UserStatus.ACTIVO) return failure();
         if (state.lockedUntil() != null && clock.instant().isBefore(state.lockedUntil())) return failure();
-        if (state.credentialsUpdatedAt() != null && state.credentialsUpdatedAt().isAfter(issuedAt)) return failure();
+        String tokenCredentialsUpdated = token.getClaimAsString(JwtTokenService.CREDENTIALS_UPDATED_CLAIM);
+        if (!sameCredentialVersion(state.credentialsUpdatedAt(), tokenCredentialsUpdated)) return failure();
 
         Set<AuthRole> tokenRoles = new HashSet<>();
         try { roleClaims.forEach(role -> tokenRoles.add(AuthRole.valueOf(role))); }
@@ -52,4 +53,14 @@ public class JwtUserStateValidator implements OAuth2TokenValidator<Jwt> {
     }
 
     private OAuth2TokenValidatorResult failure() { return OAuth2TokenValidatorResult.failure(INVALID); }
+
+    private boolean sameCredentialVersion(Instant databaseValue, String tokenValue) {
+        if (databaseValue == null) return tokenValue == null;
+        if (tokenValue == null) return false;
+        try {
+            return databaseValue.equals(Instant.parse(tokenValue));
+        } catch (RuntimeException exception) {
+            return false;
+        }
+    }
 }

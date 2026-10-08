@@ -4,6 +4,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -48,18 +49,28 @@ public class ReporteRepository extends BaseRepository {
 
     // Consulta 10: recaudacion por dia, estacion y tipo de tarifa
     public List<Map<String, Object>> recaudacion(LocalDate desde, LocalDate hasta) {
-        return listar("""
+        StringBuilder sql = new StringBuilder("""
                 SELECT TRUNC(vp.fecha_hora_ingreso) AS fecha, e.id_estacion, e.nombre AS estacion,
                        t.tipo_producto, COUNT(*) AS viajes, SUM(vp.monto_cobrado) AS total
                   FROM VIAJE_PASAJERO vp
                   JOIN ESTACION e ON e.id_estacion = vp.id_estacion_ingreso
                   JOIN TARIFA t ON t.codigo_tarifa = vp.codigo_tarifa
                  WHERE vp.estado <> 'ANULADO'
-                   AND (? IS NULL OR vp.fecha_hora_ingreso >= ?)
-                   AND (? IS NULL OR vp.fecha_hora_ingreso < ? + 1)
+                """);
+        List<Object> params = new ArrayList<>();
+        if (desde != null) {
+            sql.append(" AND vp.fecha_hora_ingreso >= ?\n");
+            params.add(desde);
+        }
+        if (hasta != null) {
+            sql.append(" AND vp.fecha_hora_ingreso < ? + 1\n");
+            params.add(hasta);
+        }
+        sql.append("""
                  GROUP BY TRUNC(vp.fecha_hora_ingreso), e.id_estacion, e.nombre, t.tipo_producto
                  ORDER BY fecha, estacion, t.tipo_producto
-                """, desde, desde, hasta, hasta);
+                """);
+        return listar(sql.toString(), params.toArray());
     }
 
     public List<Map<String, Object>> ingresosPorLinea(LocalDate desde, LocalDate hasta) {
