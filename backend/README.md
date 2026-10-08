@@ -71,6 +71,36 @@ Inmediatamente despues del alta, quite `APP_AUTH_BOOTSTRAP_PASSWORD` del entorno
 establezca `APP_AUTH_BOOTSTRAP_ENABLED=false` y reinicie el proceso. La contrasena
 no se registra ni se devuelve. Los archivos `.env` reales siguen prohibidos.
 
+## Modo demostración
+
+El perfil Spring `demo` ofrece una cuenta pública destinada exclusivamente a la
+evaluación local del proyecto. Reutiliza el bootstrap administrativo, guarda la
+contraseña únicamente como hash BCrypt y asigna el rol `ADMIN` sin duplicar el
+usuario ni su asignación de rol en arranques posteriores.
+
+Las variables `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` y `JWT_SECRET` continúan
+siendo obligatorias. También deben definirse `JWT_ISSUER` y `JWT_AUDIENCE` como
+en el modo normal. Con el esquema instalado desde los scripts canónicos, inicie
+el backend desde PowerShell así:
+
+Si el esquema local fue creado antes de esta versión, vuelva a ejecutar
+`database/scripts/04_procedimientos.sql` para actualizar de forma no destructiva
+el procedimiento de bootstrap antes del primer arranque demo.
+
+```powershell
+cd backend
+mvn.cmd spring-boot:run "-Dspring-boot.run.profiles=demo"
+```
+
+Credenciales públicas de evaluación:
+
+- Usuario: `demo_admin`
+- Contraseña: `MetroNY-Demo-2026!`
+- Rol: `ADMIN`
+
+El perfil normal no activa esta cuenta. El perfil `demo` nunca debe utilizarse
+en un despliegue público, compartido o de producción.
+
 ## Como correrlo
 
 ### Opcion A: IntelliJ (recomendada)

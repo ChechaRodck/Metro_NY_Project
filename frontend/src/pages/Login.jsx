@@ -18,6 +18,12 @@ const NETWORK_DEPTHS = [
   { xProperty: "--network-near-x", yProperty: "--network-near-y", shift: 8 },
 ];
 const STATION_EMPHASIS_RADIUS = 0.22;
+const DEMO_ACCESS = import.meta.env.DEV
+  ? {
+      username: "demo_admin",
+      password: "MetroNY-Demo-2026!",
+    }
+  : null;
 
 function clamp(value, minimum, maximum) {
   return Math.min(Math.max(value, minimum), maximum);
@@ -227,6 +233,16 @@ function Login() {
     }
   }
 
+  function handleUseDemoAccess() {
+    if (!DEMO_ACCESS) {
+      return;
+    }
+
+    setUsername(DEMO_ACCESS.username);
+    setPassword(DEMO_ACCESS.password);
+    setError("");
+  }
+
   return (
     <main className="login-page">
       <div className="login-shell">
@@ -409,6 +425,37 @@ function Login() {
                   <span>Mantener sesión en esta pestaña</span>
                 </label>
               </div>
+
+              {DEMO_ACCESS && (
+                <section
+                  className="login-demo-access"
+                  aria-labelledby="login-demo-title"
+                >
+                  <div className="login-demo-access__heading">
+                    <div>
+                      <strong id="login-demo-title">Acceso de demostración</strong>
+                      <span>Evaluación local</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleUseDemoAccess}
+                      disabled={isSubmitting}
+                    >
+                      Usar acceso demo
+                    </button>
+                  </div>
+                  <dl>
+                    <div>
+                      <dt>Usuario</dt>
+                      <dd>{DEMO_ACCESS.username}</dd>
+                    </div>
+                    <div>
+                      <dt>Contraseña</dt>
+                      <dd>{DEMO_ACCESS.password}</dd>
+                    </div>
+                  </dl>
+                </section>
+              )}
 
               {error && (
                 <div className="login-error" id="login-error" role="alert">

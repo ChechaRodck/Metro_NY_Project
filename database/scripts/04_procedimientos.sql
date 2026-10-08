@@ -53,15 +53,37 @@ CREATE OR REPLACE PROCEDURE SP_AUTH_BOOTSTRAP_ADMIN (
   v_id_rol NUMBER;
 BEGIN
   LOCK TABLE USUARIO IN EXCLUSIVE MODE;
-  SELECT COUNT(*) INTO v_total FROM USUARIO;
-  IF v_total > 0 THEN
-    p_id_usuario := NULL; p_creado := 'N'; RETURN;
-  END IF;
   BEGIN
     SELECT id_rol INTO v_id_rol FROM ROL WHERE codigo = 'ADMIN' AND estado = 'ACTIVO';
   EXCEPTION WHEN NO_DATA_FOUND THEN
     RAISE_APPLICATION_ERROR(-20179, 'El rol ADMIN no esta disponible');
   END;
+
+  BEGIN
+    SELECT id_usuario INTO p_id_usuario
+      FROM USUARIO
+     WHERE nombre_usuario = p_nombre_usuario;
+
+    SELECT COUNT(*) INTO v_total
+      FROM USUARIO_ROL
+     WHERE id_usuario = p_id_usuario
+       AND id_rol = v_id_rol;
+
+    IF v_total = 0 THEN
+      RAISE_APPLICATION_ERROR(-20180, 'El usuario bootstrap existente no tiene rol ADMIN');
+    END IF;
+
+    p_creado := 'N';
+    RETURN;
+  EXCEPTION
+    WHEN NO_DATA_FOUND THEN NULL;
+  END;
+
+  SELECT COUNT(*) INTO v_total FROM USUARIO;
+  IF v_total > 0 AND NVL(p_actor, 'BOOTSTRAP') <> 'BOOTSTRAP_DEMO' THEN
+    p_id_usuario := NULL; p_creado := 'N'; RETURN;
+  END IF;
+
   p_id_usuario := SEQ_USUARIO.NEXTVAL;
   INSERT INTO USUARIO (id_usuario, nombre_usuario, nombre_mostrar, hash_contrasena)
   VALUES (p_id_usuario, p_nombre_usuario, p_nombre_mostrar, p_hash);
