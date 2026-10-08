@@ -509,6 +509,100 @@ body:has(.login-page) {
   opacity: 0.62;
 }
 
+.login-demo-access {
+  display: grid;
+  gap: 10px;
+  padding: 11px 12px;
+  background: #0d1728;
+  border: 1px solid #344258;
+  border-radius: 9px;
+}
+
+.login-demo-access__heading {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.login-demo-access__heading strong,
+.login-demo-access__heading span {
+  display: block;
+}
+
+.login-demo-access__heading strong {
+  color: #dbeafe;
+  font-size: 11px;
+}
+
+.login-demo-access__heading span {
+  margin-top: 2px;
+  color: #7f92ae;
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.login-demo-access__heading button {
+  min-height: 32px;
+  padding: 0 11px;
+  flex-shrink: 0;
+  color: #bfdbfe;
+  font-size: 10px;
+  font-weight: 800;
+  background: #17263d;
+  border: 1px solid #4778d1;
+  border-radius: 7px;
+  transition:
+    color var(--motion-duration-fast) ease,
+    background-color var(--motion-duration-fast) ease,
+    border-color var(--motion-duration-fast) ease;
+}
+
+.login-demo-access__heading button:hover:not(:disabled) {
+  color: #ffffff;
+  background: #1d3150;
+  border-color: #84adff;
+}
+
+.login-demo-access__heading button:focus-visible {
+  outline: 2px solid #84adff;
+  outline-offset: 2px;
+}
+
+.login-demo-access__heading button:disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
+}
+
+.login-demo-access dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+.login-demo-access dl > div {
+  min-width: 0;
+}
+
+.login-demo-access dt {
+  color: #7f92ae;
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.login-demo-access dd {
+  margin: 2px 0 0;
+  overflow-wrap: anywhere;
+  color: #c7d7ed;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 10px;
+  line-height: 1.4;
+  user-select: all;
+}
+
 .login-error {
   padding: 10px 12px;
   color: #fda29b;
@@ -959,6 +1053,19 @@ body:has(.login-page) {
     gap: 4px;
   }
 
+  .login-demo-access__heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .login-demo-access__heading button {
+    width: 100%;
+  }
+
+  .login-demo-access dl {
+    grid-template-columns: 1fr;
+  }
+
 }
 
 @media (max-width: 340px) {
@@ -1024,6 +1131,10 @@ body:has(.login-page) {
 
   .blob-button__blob {
     display: none;
+    transition: none;
+  }
+
+  .login-demo-access__heading button {
     transition: none;
   }
 }

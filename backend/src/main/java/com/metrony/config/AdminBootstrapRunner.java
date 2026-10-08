@@ -6,6 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.core.env.Environment;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,11 +18,14 @@ public class AdminBootstrapRunner implements ApplicationRunner {
     private final AuthRepository repository;
     private final PasswordPolicy passwordPolicy;
     private final PasswordEncoder passwordEncoder;
+    private final Environment environment;
 
     public AdminBootstrapRunner(AuthProperties properties, AuthRepository repository,
-                                PasswordPolicy passwordPolicy, PasswordEncoder passwordEncoder) {
+                                PasswordPolicy passwordPolicy, PasswordEncoder passwordEncoder,
+                                Environment environment) {
         this.properties = properties; this.repository = repository;
         this.passwordPolicy = passwordPolicy; this.passwordEncoder = passwordEncoder;
+        this.environment = environment;
     }
 
     @Override
@@ -29,7 +33,8 @@ public class AdminBootstrapRunner implements ApplicationRunner {
     public void run(ApplicationArguments args) {
         AuthProperties.Bootstrap bootstrap = properties.getBootstrap();
         if (!bootstrap.isEnabled()) return;
-        if (repository.countUsers() > 0) {
+        boolean demoProfile = environment.matchesProfiles("demo");
+        if (!demoProfile && repository.countUsers() > 0) {
             log.info("Bootstrap administrativo omitido: ya existen usuarios."); return;
         }
         String username = passwordPolicy.validateUsername(bootstrap.getUsername());
@@ -39,7 +44,9 @@ public class AdminBootstrapRunner implements ApplicationRunner {
             throw new IllegalStateException("APP_AUTH_BOOTSTRAP_DISPLAY_NAME es obligatorio y admite hasta 120 caracteres");
         }
         AuthRepository.BootstrapResult result = repository.bootstrapAdmin(username,
-                bootstrap.getDisplayName().trim(), passwordEncoder.encode(bootstrap.getPassword()), "BOOTSTRAP");
-        log.info(result.created() ? "Bootstrap administrativo completado." : "Bootstrap administrativo omitido por concurrencia.");
+                bootstrap.getDisplayName().trim(), passwordEncoder.encode(bootstrap.getPassword()),
+                demoProfile ? "BOOTSTRAP_DEMO" : "BOOTSTRAP");
+        log.info(result.created() ? "Bootstrap administrativo completado."
+                : "Bootstrap administrativo omitido: la cuenta ya esta disponible.");
     }
 }

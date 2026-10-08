@@ -1,5 +1,29 @@
 # React + Vite
 
+## Modo demostración
+
+El acceso demostrativo de Metro NY es público y está destinado únicamente a la
+evaluación local. Con el backend iniciado mediante el perfil Spring `demo`, abra
+una PowerShell nueva y ejecute:
+
+```powershell
+cd frontend
+npm.cmd ci
+$env:VITE_API_BASE_URL = "http://localhost:8080"
+npm.cmd run dev
+```
+
+Después visite `http://localhost:5173/login`. En desarrollo aparecerá el bloque
+“Acceso de demostración”, que permite completar sin enviar automáticamente:
+
+- Usuario: `demo_admin`
+- Contraseña: `MetroNY-Demo-2026!`
+
+El backend sigue requiriendo `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` y
+`JWT_SECRET` (además de su issuer y audience JWT). Las credenciales demo no se
+muestran en builds de producción y el perfil `demo` nunca debe desplegarse
+públicamente.
+
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
 Currently, two official plugins are available:
