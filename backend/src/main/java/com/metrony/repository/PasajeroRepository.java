@@ -73,6 +73,17 @@ public class PasajeroRepository extends BaseRepository {
 
     // ------------------------- TARJETAS -------------------------
 
+    public List<Map<String, Object>> listarTarjetas() {
+        return listar("""
+                SELECT t.*, ta.nombre AS tarifa, ta.tipo_producto,
+                       NVL(p.nombres || ' ' || p.apellidos, 'ANONIMA') AS pasajero
+                  FROM TARJETA t
+                  JOIN TARIFA ta ON ta.codigo_tarifa = t.codigo_tarifa
+                  LEFT JOIN PASAJERO p ON p.id_pasajero = t.id_pasajero
+                 ORDER BY t.fecha_emision DESC, t.numero_tarjeta
+                """);
+    }
+
     public Map<String, Object> buscarTarjeta(Long numero) {
         return buscarUno("""
                 SELECT t.*, ta.nombre AS tarifa, ta.tipo_producto, ta.monto AS monto_tarifa,
@@ -119,6 +130,18 @@ public class PasajeroRepository extends BaseRepository {
                  WHERE r.numero_tarjeta = ?
                  ORDER BY r.fecha_hora DESC
                 """, numero);
+    }
+
+    public List<Map<String, Object>> listarRecargas() {
+        return listar("""
+                SELECT r.*, e.nombre AS estacion,
+                       NVL(p.nombres || ' ' || p.apellidos, 'ANONIMA') AS pasajero
+                  FROM RECARGA r
+                  JOIN TARJETA t ON t.numero_tarjeta = r.numero_tarjeta
+                  LEFT JOIN PASAJERO p ON p.id_pasajero = t.id_pasajero
+                  LEFT JOIN ESTACION e ON e.id_estacion = r.id_estacion
+                 ORDER BY r.fecha_hora DESC, r.numero_transaccion DESC
+                """);
     }
 
     public List<Map<String, Object>> viajesDeTarjeta(Long numero) {

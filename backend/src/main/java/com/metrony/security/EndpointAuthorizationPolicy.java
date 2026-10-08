@@ -69,6 +69,7 @@ public class EndpointAuthorizationPolicy implements AuthorizationManager<Request
 
         // Rutas y horarios (13).
         get(ALL, "/api/rutas/afectadas", "/api/rutas", "/api/rutas/{id}", "/api/rutas/{id}/paradas", "/api/rutas/{id}/horarios");
+        get(ALL, "/api/horarios");
         post(AO, "/api/rutas", "/api/rutas/{id}/paradas", "/api/rutas/{id}/horarios");
         put(AO, "/api/rutas/{id}", "/api/horarios/{id}");
         patch(AO, "/api/rutas/{id}/estado", "/api/horarios/{id}/estado");
@@ -93,8 +94,9 @@ public class EndpointAuthorizationPolicy implements AuthorizationManager<Request
         delete(AM, "/api/trenes/{codigo}/vagones/{numeroSerie}");
 
         // Personal (18) y pasajeros (6): datos personales solo ADMIN.
+        get(AOM, "/api/empleados/opciones");
         get(A, "/api/empleados", "/api/empleados/{id}", "/api/cargos", "/api/empleados/{id}/certificaciones",
-                "/api/certificaciones/por-vencer", "/api/turnos", "/api/turnos/sin-cubrir", "/api/ausencias");
+                "/api/certificaciones", "/api/certificaciones/por-vencer", "/api/turnos", "/api/turnos/sin-cubrir", "/api/ausencias");
         post(A, "/api/empleados", "/api/empleados/{id}/certificaciones", "/api/certificaciones/revisar-vencimientos",
                 "/api/turnos", "/api/turnos/{id}/sustituir", "/api/ausencias");
         put(A, "/api/empleados/{id}");
@@ -103,7 +105,7 @@ public class EndpointAuthorizationPolicy implements AuthorizationManager<Request
         post(A, "/api/pasajeros"); put(A, "/api/pasajeros/{id}"); patch(A, "/api/pasajeros/{id}/estado");
 
         // Tarjetas son datos financieros; los accesos pertenecen a operaciones (11).
-        get(A, "/api/tarjetas/alertas", "/api/tarjetas/{numero}", "/api/tarjetas/{numero}/saldo",
+        get(A, "/api/tarjetas", "/api/recargas", "/api/tarjetas/alertas", "/api/tarjetas/{numero}", "/api/tarjetas/{numero}/saldo",
                 "/api/tarjetas/{numero}/recargas", "/api/tarjetas/{numero}/viajes");
         post(A, "/api/tarjetas", "/api/tarjetas/{numero}/recargas"); patch(A, "/api/tarjetas/{numero}/estado");
         post(AO, "/api/accesos/ingreso", "/api/accesos/salida", "/api/accesos/boleto");
@@ -129,6 +131,9 @@ public class EndpointAuthorizationPolicy implements AuthorizationManager<Request
         get(AOC, "/api/reportes/pasajeros-por-linea");
         get(ALL, "/api/reportes/estaciones-flujo", "/api/reportes/retrasos-por-linea", "/api/reportes/trenes-inspeccion-vencida");
         get(AO, "/api/reportes/conductores-por-viaje");
+
+        // Resumen operacional sin datos personales ni financieros, visible para todo usuario autenticado.
+        get(ALL, "/api/dashboard/resumen");
 
         // Tarifas (6).
         get(ALL, "/api/tarifas", "/api/tarifas/{codigo}", "/api/tarifas/{codigo}/historial");

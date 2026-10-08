@@ -131,7 +131,9 @@ public class TrenRepository extends BaseRepository {
         return listar("""
                 SELECT v.*,
                        (SELECT tv.codigo_tren FROM TREN_VAGON tv
-                         WHERE tv.numero_serie = v.numero_serie AND tv.fecha_fin IS NULL) AS tren_actual
+                         WHERE tv.numero_serie = v.numero_serie AND tv.fecha_fin IS NULL) AS tren_actual,
+                       (SELECT tv.posicion FROM TREN_VAGON tv
+                         WHERE tv.numero_serie = v.numero_serie AND tv.fecha_fin IS NULL) AS posicion_actual
                   FROM VAGON v
                  WHERE (? = 'N' OR NOT EXISTS (SELECT 1 FROM TREN_VAGON tv
                                                WHERE tv.numero_serie = v.numero_serie AND tv.fecha_fin IS NULL))

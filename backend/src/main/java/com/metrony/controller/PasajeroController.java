@@ -2,7 +2,9 @@ package com.metrony.controller;
 
 import com.metrony.dto.Peticiones.EstadoRequest;
 import com.metrony.dto.Peticiones.PasajeroRequest;
+import com.metrony.dto.OperationalResponses.CardSummaryResponse;
 import com.metrony.repository.PasajeroRepository;
+import com.metrony.service.OperationalQueryService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
@@ -15,9 +17,11 @@ import java.util.Map;
 public class PasajeroController {
 
     private final PasajeroRepository pasajeros;
+    private final OperationalQueryService queries;
 
-    public PasajeroController(PasajeroRepository pasajeros) {
+    public PasajeroController(PasajeroRepository pasajeros, OperationalQueryService queries) {
         this.pasajeros = pasajeros;
+        this.queries = queries;
     }
 
     @GetMapping
@@ -47,7 +51,7 @@ public class PasajeroController {
     }
 
     @GetMapping("/{id}/tarjetas")
-    public List<Map<String, Object>> tarjetas(@PathVariable Long id) {
-        return pasajeros.tarjetasDePasajero(id);
+    public List<CardSummaryResponse> tarjetas(@PathVariable Long id) {
+        return queries.cardsForPassenger(id);
     }
 }

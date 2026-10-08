@@ -1,6 +1,8 @@
 package com.metrony.controller;
 
 import com.metrony.repository.ReporteRepository;
+import com.metrony.dto.OperationalResponses.BlockedCardResponse;
+import com.metrony.service.OperationalQueryService;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
 
@@ -16,9 +18,11 @@ import java.util.Map;
 public class ReporteController {
 
     private final ReporteRepository reportes;
+    private final OperationalQueryService queries;
 
-    public ReporteController(ReporteRepository reportes) {
+    public ReporteController(ReporteRepository reportes, OperationalQueryService queries) {
         this.reportes = reportes;
+        this.queries = queries;
     }
 
     @GetMapping("/reportes/resumen")
@@ -84,8 +88,8 @@ public class ReporteController {
 
     // Consulta 14
     @GetMapping("/reportes/tarjetas-bloqueadas")
-    public List<Map<String, Object>> tarjetasBloqueadas() {
-        return reportes.tarjetasBloqueadasVencidas();
+    public List<BlockedCardResponse> tarjetasBloqueadas() {
+        return queries.blockedCards();
     }
 
     @GetMapping("/bitacora")
