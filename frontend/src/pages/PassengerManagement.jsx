@@ -83,11 +83,17 @@ function formatCurrency(value) {
 function formatDate(value) {
   if (!value) return "Sin fecha registrada";
 
+  const dateOnly = String(value).match(/^\d{4}-\d{2}-\d{2}/)?.[0];
+  if (!dateOnly) return "Fecha no válida";
+
+  const parsedDate = new Date(`${dateOnly}T00:00:00`);
+  if (Number.isNaN(parsedDate.getTime())) return "Fecha no válida";
+
   return new Intl.DateTimeFormat("es-GT", {
     day: "2-digit",
     month: "short",
     year: "numeric",
-  }).format(new Date(`${value}T00:00:00`));
+  }).format(parsedDate);
 }
 
 function maskCardNumber(value) {

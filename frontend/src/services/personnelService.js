@@ -1,21 +1,34 @@
 import { apiRequest } from "./apiClient";
-import { dateParts, labelCode, numberValue, requireList, toIsoLocal } from "./serviceUtils";
+import {
+  dateOnlyValue,
+  dateParts,
+  labelCode,
+  loadSequentially,
+  numberValue,
+  requireList,
+  toIsoLocal,
+} from "./serviceUtils";
 
 const employeeStates = { ACTIVO: "Activo", INACTIVO: "Inactivo", VACACIONES: "De vacaciones", PERMISO: "Permiso", SUSPENDIDO: "Suspendido" };
 const attendanceStates = { PROGRAMADO: "Programado", PRESENTE: "Presente", AUSENTE: "Ausente", PERMISO: "Permiso", VACACIONES: "Vacaciones" };
 const certificationStates = { VIGENTE: "Vigente", VENCIDA: "Vencida", REVOCADA: "Revocada" };
 
 export async function getPersonnel({ signal } = {}) {
-  const [employees, roles, shifts, certifications, models] = await Promise.all([
-    apiRequest("/api/empleados", { signal }), apiRequest("/api/cargos", { signal }),
-    apiRequest("/api/turnos", { signal }), apiRequest("/api/certificaciones", { signal }),
-    apiRequest("/api/modelos", { signal }),
-  ]);
+  const [employees, roles, shifts, certifications, models] = await loadSequentially(
+    [
+      (requestSignal) => apiRequest("/api/empleados", { signal: requestSignal }),
+      (requestSignal) => apiRequest("/api/cargos", { signal: requestSignal }),
+      (requestSignal) => apiRequest("/api/turnos", { signal: requestSignal }),
+      (requestSignal) => apiRequest("/api/certificaciones", { signal: requestSignal }),
+      (requestSignal) => apiRequest("/api/modelos", { signal: requestSignal }),
+    ],
+    { signal },
+  );
   const adaptedEmployees = requireList(employees, "empleados").map((row) => ({
     id: String(row.idEmpleado), apiId: Number(row.idEmpleado), name: `${row.nombres ?? ""} ${row.apellidos ?? ""}`.trim(),
-    firstNames: row.nombres, lastNames: row.apellidos, birthDate: row.fechaNacimiento ?? "",
+    firstNames: row.nombres, lastNames: row.apellidos, birthDate: dateOnlyValue(row.fechaNacimiento),
     address: row.direccion ?? "", phone: row.telefono ?? "", email: row.correo ?? "",
-    hireDate: row.fechaContratacion ?? "", role: row.nombreCargo, roleCode: row.codigoCargo,
+    hireDate: dateOnlyValue(row.fechaContratacion), role: row.nombreCargo, roleCode: row.codigoCargo,
     roleId: Number(row.idCargo), shift: row.turno, salary: numberValue(row.salario),
     status: labelCode(row.estadoLaboral, employeeStates).label, statusCode: row.estadoLaboral,
     supervisor: row.supervisor ?? "Sin supervisor", supervisorId: row.idSupervisor == null ? null : Number(row.idSupervisor),
@@ -38,8 +51,8 @@ export async function getPersonnel({ signal } = {}) {
     }),
     certifications: requireList(certifications, "certificaciones").map((row) => ({
       id: String(row.idCertificacion), apiId: Number(row.idCertificacion), employeeId: String(row.idEmpleado),
-      employee: row.empleado, type: row.tipoCertificacion, issueDate: row.fechaEmision,
-      expirationDate: row.fechaVencimiento, institution: row.institucionEmisora,
+      employee: row.empleado, type: row.tipoCertificacion, issueDate: dateOnlyValue(row.fechaEmision),
+      expirationDate: dateOnlyValue(row.fechaVencimiento), institution: row.institucionEmisora,
       models: row.modelos ?? "Sin modelos asociados",
       status: labelCode(row.estado, certificationStates).label, statusCode: row.estado,
     })),
