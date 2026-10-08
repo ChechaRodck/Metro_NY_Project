@@ -38,6 +38,24 @@ jdbc:oracle:thin:@localhost:1521:XE
 jdbc:oracle:thin:@//localhost:1521/service_name
 ```
 
+Para Oracle XE 21c local, la URL validada por el proyecto es:
+
+```powershell
+$env:DB_URL = "jdbc:oracle:thin:@//localhost:1521/XEPDB1"
+```
+
+En Windows PowerShell 5.1 puede generar un secreto JWT Base64 compatible sin
+usar `RandomNumberGenerator.Fill()`, que no está disponible en todas las
+versiones instaladas:
+
+```powershell
+$bytes = New-Object byte[] 32
+$generator = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+$generator.GetBytes($bytes)
+$generator.Dispose()
+$env:JWT_SECRET = [Convert]::ToBase64String($bytes)
+```
+
 `backend/.env.example` enumera los nombres sin valores. Spring Boot no carga un
 archivo `.env` automaticamente: exporte las variables en el sistema, inyectelas
 desde su plataforma o configurelas en el IDE. Los archivos `.env` reales estan
@@ -95,7 +113,7 @@ mvn.cmd spring-boot:run "-Dspring-boot.run.profiles=demo"
 Credenciales públicas de evaluación:
 
 - Usuario: `demo_admin`
-- Contraseña: `MetroNY-Demo-2026!`
+- Contraseña: `TrenSeguro#2026!`
 - Rol: `ADMIN`
 
 El perfil normal no activa esta cuenta. El perfil `demo` nunca debe utilizarse

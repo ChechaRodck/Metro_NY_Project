@@ -17,7 +17,7 @@ Después visite `http://localhost:5173/login`. En desarrollo aparecerá el bloqu
 “Acceso de demostración”, que permite completar sin enviar automáticamente:
 
 - Usuario: `demo_admin`
-- Contraseña: `MetroNY-Demo-2026!`
+- Contraseña: `TrenSeguro#2026!`
 
 El backend sigue requiriendo `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` y
 `JWT_SECRET` (además de su issuer y audience JWT). Las credenciales demo no se
