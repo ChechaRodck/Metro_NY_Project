@@ -28,6 +28,47 @@ export function dateParts(value) {
   return { date, time: rawTime.slice(0, 5) };
 }
 
+export function dateOnlyValue(value) {
+  if (typeof value !== "string") return "";
+  return value.match(/^\d{4}-\d{2}-\d{2}/)?.[0] ?? "";
+}
+
+export async function loadSequentially(loaders, { signal, timeoutMs = 20000 } = {}) {
+  const controller = new AbortController();
+  let didTimeout = false;
+  const handleExternalAbort = () => controller.abort();
+
+  if (signal?.aborted) controller.abort();
+  else signal?.addEventListener("abort", handleExternalAbort, { once: true });
+
+  const timeoutId = setTimeout(() => {
+    didTimeout = true;
+    controller.abort();
+  }, timeoutMs);
+
+  try {
+    const results = [];
+
+    for (const load of loaders) {
+      results.push(await load(controller.signal));
+    }
+
+    return results;
+  } catch (error) {
+    if (didTimeout) {
+      throw new Error(
+        "La carga tardó demasiado. Verifica el servicio y vuelve a intentarlo.",
+        { cause: error },
+      );
+    }
+
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
+    signal?.removeEventListener("abort", handleExternalAbort);
+  }
+}
+
 export function labelCode(value, labels = {}) {
   const code = textValue(value, "SIN_DATOS").toUpperCase();
   const fallback = code

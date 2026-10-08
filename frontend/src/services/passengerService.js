@@ -1,28 +1,40 @@
 import { apiRequest } from "./apiClient";
-import { dateParts, labelCode, numberValue, requireList } from "./serviceUtils";
+import {
+  dateOnlyValue,
+  dateParts,
+  labelCode,
+  loadSequentially,
+  numberValue,
+  requireList,
+} from "./serviceUtils";
 
 const passengerStates = { ACTIVO: "Activo", INACTIVO: "Inactivo", SUSPENDIDO: "Suspendido" };
 const cardStates = { ACTIVA: "Activa", BLOQUEADA: "Bloqueada", VENCIDA: "Vencida", PERDIDA: "Perdida", CANCELADA: "Cancelada" };
 const fareStates = { ACTIVA: "Activa", INACTIVA: "Inactiva" };
 
 export async function getPassengerLedger({ signal } = {}) {
-  const [passengers, cards, recharges, fares, stations] = await Promise.all([
-    apiRequest("/api/pasajeros", { signal }), apiRequest("/api/tarjetas", { signal }),
-    apiRequest("/api/recargas", { signal }), apiRequest("/api/tarifas", { signal }),
-    apiRequest("/api/estaciones", { signal }),
-  ]);
+  const [passengers, cards, recharges, fares, stations] = await loadSequentially(
+    [
+      (requestSignal) => apiRequest("/api/pasajeros", { signal: requestSignal }),
+      (requestSignal) => apiRequest("/api/tarjetas", { signal: requestSignal }),
+      (requestSignal) => apiRequest("/api/recargas", { signal: requestSignal }),
+      (requestSignal) => apiRequest("/api/tarifas", { signal: requestSignal }),
+      (requestSignal) => apiRequest("/api/estaciones", { signal: requestSignal }),
+    ],
+    { signal },
+  );
   return {
     passengers: requireList(passengers, "pasajeros").map((row) => ({
       id: String(row.idPasajero), apiId: Number(row.idPasajero), name: `${row.nombres ?? ""} ${row.apellidos ?? ""}`.trim(),
       firstNames: row.nombres, lastNames: row.apellidos, document: "No registrado en el modelo",
-      phone: row.telefono ?? "—", email: row.correo ?? "—", registrationDate: row.fechaRegistro ?? "",
+      phone: row.telefono ?? "—", email: row.correo ?? "—", registrationDate: dateOnlyValue(row.fechaRegistro),
       trips: null, typeCode: row.tipoPasajero,
       status: labelCode(row.estado, passengerStates).label, statusCode: row.estado,
     })),
     cards: requireList(cards, "tarjetas").map((row) => ({
       id: row.numeroMascarado, number: row.numeroMascarado, passengerId: row.idPasajero == null ? null : String(row.idPasajero),
       passenger: row.pasajero ?? "Anónima", type: row.tarifa, fareCode: row.codigoTarifa,
-      balance: numberValue(row.saldo), issueDate: row.fechaEmision ?? "", expirationDate: row.fechaVencimiento ?? "",
+      balance: numberValue(row.saldo), issueDate: dateOnlyValue(row.fechaEmision), expirationDate: dateOnlyValue(row.fechaVencimiento),
       status: labelCode(row.estado, cardStates).label, statusCode: row.estado,
     })),
     recharges: requireList(recharges, "recargas").map((row) => {
@@ -38,7 +50,7 @@ export async function getPassengerLedger({ signal } = {}) {
       productType: row.tipoProducto, price: numberValue(row.monto),
       validity: row.duracionDias ? `${row.duracionDias} días` : row.cantidadMaxViajes ? `${row.cantidadMaxViajes} viajes` : "Según uso",
       durationDays: row.duracionDias, maxTrips: row.cantidadMaxViajes,
-      startDate: row.fechaInicioVigencia, endDate: row.fechaFinVigencia,
+      startDate: dateOnlyValue(row.fechaInicioVigencia), endDate: dateOnlyValue(row.fechaFinVigencia),
       status: labelCode(row.estado, fareStates).label, statusCode: row.estado,
     })),
     stations,
