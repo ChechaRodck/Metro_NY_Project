@@ -5,6 +5,12 @@ function getCurrentDate() {
   return new Date().toISOString().slice(0, 10);
 }
 
+function getFutureDate(days) {
+  const date = new Date();
+  date.setDate(date.getDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
 const configurations = {
   trains: {
     title: "Registrar nuevo tren",
@@ -18,22 +24,16 @@ const configurations = {
         required: true,
       },
       {
-        name: "model",
+        name: "modelId",
         label: "Modelo",
-        placeholder: "Ejemplo: R211A",
-        required: true,
-      },
-      {
-        name: "manufacturer",
-        label: "Fabricante",
-        placeholder: "Nombre del fabricante",
+        type: "model-select",
         required: true,
       },
       {
         name: "year",
         label: "Año de fabricación",
         type: "number",
-        defaultValue: "2026",
+        defaultValue: String(new Date().getFullYear()),
         min: "1900",
         required: true,
       },
@@ -42,14 +42,6 @@ const configurations = {
         label: "Capacidad total",
         type: "number",
         defaultValue: "1000",
-        min: "1",
-        required: true,
-      },
-      {
-        name: "wagons",
-        label: "Cantidad de vagones",
-        type: "number",
-        defaultValue: "10",
         min: "1",
         required: true,
       },
@@ -78,20 +70,8 @@ const configurations = {
         name: "nextInspection",
         label: "Próxima inspección",
         type: "date",
-        defaultValue: "2026-10-01",
+        defaultValue: getFutureDate(90),
         required: true,
-      },
-      {
-        name: "status",
-        label: "Estado operativo",
-        type: "select",
-        defaultValue: "Disponible",
-        options: [
-          "Disponible",
-          "En operación",
-          "En mantenimiento",
-          "Fuera de servicio",
-        ],
       },
     ],
   },
@@ -111,8 +91,12 @@ const configurations = {
         name: "type",
         label: "Tipo de vagón",
         type: "select",
-        defaultValue: "Motor",
-        options: ["Motor", "Intermedio", "Cabina", "Remolque"],
+        defaultValue: "MOTRIZ",
+        options: [
+          { value: "MOTRIZ", label: "Motriz" },
+          { value: "CABINA", label: "Cabina" },
+          { value: "REMOLQUE", label: "Remolque" },
+        ],
       },
       {
         name: "train",
@@ -148,7 +132,7 @@ const configurations = {
         name: "year",
         label: "Año de fabricación",
         type: "number",
-        defaultValue: "2026",
+        defaultValue: String(new Date().getFullYear()),
         min: "1900",
         required: true,
       },
@@ -160,17 +144,6 @@ const configurations = {
         options: [
           { value: "true", label: "Disponible" },
           { value: "false", label: "No disponible" },
-        ],
-      },
-      {
-        name: "status",
-        label: "Estado",
-        type: "select",
-        defaultValue: "Operativo",
-        options: [
-          "Operativo",
-          "En mantenimiento",
-          "Fuera de servicio",
         ],
       },
     ],
@@ -237,12 +210,15 @@ function createInitialValues(
   fields,
   availableTrains,
   availableDeposits,
+  availableModels,
 ) {
   return fields.reduce((values, field) => {
     if (field.type === "train-select") {
       values[field.name] = availableTrains[0]?.id ?? "";
     } else if (field.type === "deposit-select") {
       values[field.name] = availableDeposits[0]?.id ?? "";
+    } else if (field.type === "model-select") {
+      values[field.name] = String(availableModels[0]?.idModelo ?? "");
     } else {
       values[field.name] = field.defaultValue ?? "";
     }
@@ -255,6 +231,9 @@ function FleetFormModal({
   type,
   availableTrains,
   availableDeposits,
+  availableModels = [],
+  isSubmitting = false,
+  error = "",
   onClose,
   onSubmit,
 }) {
@@ -267,6 +246,7 @@ function FleetFormModal({
       configuration.fields,
       availableTrains,
       availableDeposits,
+      availableModels,
     ),
   );
 
@@ -399,7 +379,8 @@ function FleetFormModal({
         id: formValues.id.toUpperCase(),
         year: Number(formValues.year),
         capacity: Number(formValues.capacity),
-        wagons: Number(formValues.wagons),
+        modelId: Number(formValues.modelId),
+        depositId: Number(formValues.deposit),
         mileage: Number(formValues.mileage),
       };
     }
@@ -482,6 +463,18 @@ function FleetFormModal({
       );
     }
 
+    if (field.type === "model-select") {
+      return (
+        <select {...commonProperties}>
+          {availableModels.map((model) => (
+            <option value={model.idModelo} key={model.idModelo}>
+              {model.nombreModelo} - {model.fabricante}
+            </option>
+          ))}
+        </select>
+      );
+    }
+
     return (
       <input
         {...commonProperties}
@@ -528,7 +521,7 @@ function FleetFormModal({
           </button>
         </header>
 
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} aria-busy={isSubmitting || undefined}>
           <div className="fleet-form-grid">
             {configuration.fields.map((field, index) => (
               <label
@@ -550,11 +543,14 @@ function FleetFormModal({
             ))}
           </div>
 
+          {error && <p className="fleet-form-error" role="alert">{error}</p>}
+
           <footer className="fleet-modal__footer">
             <button
               type="button"
               className="fleet-modal__cancel"
               onClick={onClose}
+              disabled={isSubmitting}
             >
               Cancelar
             </button>
@@ -562,8 +558,9 @@ function FleetFormModal({
             <button
               type="submit"
               className="fleet-modal__save"
+              disabled={isSubmitting}
             >
-              Guardar registro
+              {isSubmitting ? "Guardando…" : "Guardar registro"}
             </button>
           </footer>
         </form>

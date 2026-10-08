@@ -1,36 +1,37 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Siren, X } from "lucide-react";
-import {
-  incidentReporters,
-  incidentSeverities,
-  incidentStatuses,
-  incidentTypes,
-  relatedResourceTypes,
-} from "../data/incidentsData";
 
-function getCurrentDateTime() {
-  const currentDate = new Date();
-  currentDate.setMinutes(
-    currentDate.getMinutes() - currentDate.getTimezoneOffset(),
-  );
-  return currentDate.toISOString().slice(0, 16);
-}
+const incidentTypes = [
+  { value: "FALLA_MECANICA", label: "Falla mecánica" },
+  { value: "FALLA_ELECTRICA", label: "Falla eléctrica" },
+  { value: "FALLA_SENALIZACION", label: "Falla de señalización" },
+  { value: "EMERGENCIA_MEDICA", label: "Emergencia médica" },
+  { value: "ACCIDENTE", label: "Accidente" },
+  { value: "SEGURIDAD", label: "Seguridad" },
+  { value: "OBJETO_EN_VIA", label: "Objeto en vía" },
+  { value: "INUNDACION", label: "Inundación" },
+  { value: "INCENDIO", label: "Incendio" },
+  { value: "CONGESTION", label: "Congestión" },
+  { value: "MANT_NO_PROGRAMADO", label: "Mantenimiento no programado" },
+];
+
+const incidentSeverities = [
+  { value: "BAJO", label: "Baja" },
+  { value: "MEDIO", label: "Media" },
+  { value: "ALTO", label: "Alta" },
+  { value: "CRITICO", label: "Crítica" },
+];
 
 function createInitialFormData() {
   return {
-    type: incidentTypes[0] || "",
+    typeCode: incidentTypes[0].value,
     description: "",
-    startDateTime: getCurrentDateTime(),
-    endDateTime: "",
-    severity: "Media",
-    reportedBy: incidentReporters[0] || "",
-    status: "Reportado",
+    startDateTime: "",
+    severityCode: "MEDIO",
+    reportedBy: "Centro de control",
     identifiedCause: "",
-    actionsTaken: "",
     affectedPassengers: "",
-    relatedType: relatedResourceTypes[0] || "",
-    relatedResource: "",
     location: "",
   };
 }
@@ -94,8 +95,8 @@ function SelectField({
         required
       >
         {options.map((option) => (
-          <option key={option} value={option}>
-            {option}
+          <option key={option.value} value={option.value}>
+            {option.label}
           </option>
         ))}
       </select>
@@ -152,7 +153,7 @@ function getFocusableElements(container) {
   );
 }
 
-function IncidentFormModal({ onClose, onSave }) {
+function IncidentFormModal({ isSubmitting = false, error = "", onClose, onSave }) {
   const [formData, setFormData] = useState(createInitialFormData);
   const backdropRef = useRef(null);
   const dialogRef = useRef(null);
@@ -303,7 +304,7 @@ function IncidentFormModal({ onClose, onSave }) {
             <div>
               <h2 id="incident-modal-title">Registrar incidente</h2>
               <p id="incident-modal-description">
-                Agrega un registro local para esta sesión de demostración.
+                Registra el incidente de forma persistente en Oracle.
               </p>
             </div>
           </div>
@@ -318,7 +319,7 @@ function IncidentFormModal({ onClose, onSave }) {
           </button>
         </header>
 
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} aria-busy={isSubmitting || undefined}>
           <div className="incident-modal__body">
             <p className="incident-form-required-note">
               Los campos marcados con * son obligatorios.
@@ -327,8 +328,8 @@ function IncidentFormModal({ onClose, onSave }) {
             <div className="incident-form-grid">
               <SelectField
                 label="Tipo de incidente"
-                name="type"
-                value={formData.type}
+                name="typeCode"
+                value={formData.typeCode}
                 onChange={handleChange}
                 options={incidentTypes}
                 inputRef={initialFocusRef}
@@ -336,8 +337,8 @@ function IncidentFormModal({ onClose, onSave }) {
 
               <SelectField
                 label="Nivel de severidad"
-                name="severity"
-                value={formData.severity}
+                name="severityCode"
+                value={formData.severityCode}
                 onChange={handleChange}
                 options={incidentSeverities}
               />
@@ -351,44 +352,11 @@ function IncidentFormModal({ onClose, onSave }) {
               />
 
               <FormField
-                label="Fecha y hora de finalización"
-                name="endDateTime"
-                value={formData.endDateTime}
-                onChange={handleChange}
-                type="datetime-local"
-                required={false}
-              />
-
-              <SelectField
                 label="Persona o fuente que reportó"
                 name="reportedBy"
                 value={formData.reportedBy}
                 onChange={handleChange}
-                options={incidentReporters}
-              />
-
-              <SelectField
-                label="Estado inicial"
-                name="status"
-                value={formData.status}
-                onChange={handleChange}
-                options={incidentStatuses}
-              />
-
-              <SelectField
-                label="Tipo de recurso relacionado"
-                name="relatedType"
-                value={formData.relatedType}
-                onChange={handleChange}
-                options={relatedResourceTypes}
-              />
-
-              <FormField
-                label="Código o nombre del recurso"
-                name="relatedResource"
-                value={formData.relatedResource}
-                onChange={handleChange}
-                placeholder="Ejemplo: Tren NY-2501"
+                placeholder="Ejemplo: Centro de control"
               />
 
               <FormField
@@ -426,15 +394,8 @@ function IncidentFormModal({ onClose, onSave }) {
                 required={false}
               />
 
-              <TextAreaField
-                label="Acciones realizadas"
-                name="actionsTaken"
-                value={formData.actionsTaken}
-                onChange={handleChange}
-                placeholder="Describe únicamente las acciones registradas."
-                required={false}
-              />
             </div>
+            {error && <p className="incident-form-error" role="alert">{error}</p>}
           </div>
 
           <footer className="incident-modal__footer">
@@ -442,11 +403,12 @@ function IncidentFormModal({ onClose, onSave }) {
               type="button"
               className="incident-secondary-button"
               onClick={onClose}
+              disabled={isSubmitting}
             >
               Cancelar
             </button>
-            <button type="submit" className="incident-primary-button">
-              Registrar incidente
+            <button type="submit" className="incident-primary-button" disabled={isSubmitting}>
+              {isSubmitting ? "Registrando…" : "Registrar incidente"}
             </button>
           </footer>
         </form>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import {
   ArrowUpRight,
@@ -21,13 +21,8 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import {
-  dashboardStats,
-  lineStatus,
-  passengerFlow,
-  recentIncidents,
-  upcomingTrips,
-} from "../data/dashboardData";
+import ApiState from "../components/ApiState";
+import { getDashboard } from "../services/dashboardService";
 import "../styles/dashboard.css";
 
 function formatPassengers(value) {
@@ -79,14 +74,67 @@ function getRouteTextColor(hexColor) {
   return contrastWithWhite >= 4.5 ? "#ffffff" : "#050b14";
 }
 
-const lineColorByCode = new Map(
-  lineStatus.map((line) => [line.code, line.color]),
-);
-
 function Dashboard() {
-  const [lastUpdate, setLastUpdate] = useState(new Date());
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [lastUpdate, setLastUpdate] = useState(null);
+  const [request, setRequest] = useState({ status: "loading", error: null });
+  const [dashboardData, setDashboardData] = useState({
+    summary: {}, lines: [], incidents: [], trips: [], passengerFlow: [],
+  });
+  const [reloadVersion, setReloadVersion] = useState(0);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const controller = new AbortController();
+    getDashboard({ signal: controller.signal })
+      .then((data) => {
+        setDashboardData(data);
+        setLastUpdate(new Date());
+        setRequest({ status: "success", error: null });
+      })
+      .catch((error) => {
+        if (error?.name !== "AbortError") setRequest({ status: "error", error });
+      });
+    return () => controller.abort();
+  }, [reloadVersion]);
+
+  const { summary, lines, incidents, trips, passengerFlow } = dashboardData;
+  const lineStatus = lines.map((line) => ({
+    ...line,
+    code: line.id,
+    delay: line.openIncidents > 0
+      ? `${line.openIncidents} ${line.openIncidents === 1 ? "incidente" : "incidentes"}`
+      : line.status === "Operativa" ? "Servicio normal" : line.status,
+  }));
+  const recentIncidents = [...incidents]
+    .filter((incident) => !["Cerrado", "Resuelto"].includes(incident.status))
+    .sort((first, second) => {
+      const rank = { "Crítica": 0, Alta: 1, Media: 2, Baja: 3 };
+      return (rank[first.severity] ?? 4) - (rank[second.severity] ?? 4);
+    })
+    .map((incident) => ({
+      id: `INC-${incident.incidentNumber}`,
+      title: incident.type,
+      location: incident.location,
+      severity: incident.severity,
+      time: incident.startDateTime ? String(incident.startDateTime).replace("T", " ").slice(0, 16) : "Sin hora registrada",
+    }));
+  const upcomingTrips = useMemo(() => [...trips]
+    .filter((trip) => !["Completado", "Cancelado"].includes(trip.status))
+    .sort((first, second) => `${first.date}T${first.scheduledDeparture}`.localeCompare(`${second.date}T${second.scheduledDeparture}`))
+    .slice(0, 8)
+    .map((trip) => ({
+      id: trip.id, route: trip.line ?? trip.route, destination: trip.route,
+      departure: `${trip.date} ${trip.scheduledDeparture}`.trim(), platform: trip.train,
+      status: trip.status,
+    })), [trips]);
+  const passengerTotal = passengerFlow.reduce((total, point) => total + point.passengers, 0);
+  const dashboardStats = [
+    { icon: "train", label: "Líneas activas", value: summary.lineasActivas ?? 0, detail: `${summary.estacionesCerradas ?? 0} estaciones con atención` },
+    { icon: "calendar", label: "Viajes de hoy", value: summary.viajesHoy ?? 0, detail: `${summary.viajesEnCurso ?? 0} en curso` },
+    { icon: "users", label: "Pasajeros registrados", value: passengerTotal.toLocaleString("es-GT"), detail: "Suma del reporte por línea" },
+    { icon: "alert", label: "Incidentes abiertos", value: summary.incidentesAbiertos ?? 0, detail: "Estado distinto de Cerrado" },
+  ];
+  const lineColorByCode = new Map(lineStatus.map((line) => [line.code, line.color]));
 
   const currentDate = new Intl.DateTimeFormat("es-GT", {
     weekday: "long",
@@ -116,24 +164,17 @@ function Dashboard() {
 
     return Number(firstIsOperational) - Number(secondIsOperational);
   });
-  const passengerPeak = passengerFlow.reduce((peak, point) =>
+  const passengerPeak = passengerFlow.length > 0 ? passengerFlow.reduce((peak, point) =>
     point.passengers > peak.passengers ? point : peak,
-  );
-  const passengerMinimum = passengerFlow.reduce((minimum, point) =>
+  ) : null;
+  const passengerMinimum = passengerFlow.length > 0 ? passengerFlow.reduce((minimum, point) =>
     point.passengers < minimum.passengers ? point : minimum,
-  );
+  ) : null;
 
   function handleRefresh() {
-    if (isRefreshing) {
-      return;
-    }
-
-    setIsRefreshing(true);
-
-    window.setTimeout(() => {
-      setLastUpdate(new Date());
-      setIsRefreshing(false);
-    }, 700);
+    if (request.status === "loading") return;
+    setRequest({ status: "loading", error: null });
+    setReloadVersion((version) => version + 1);
   }
 
   return (
@@ -142,12 +183,11 @@ function Dashboard() {
         <div className="dashboard-heading__copy">
           <div className="dashboard-heading__title-row">
             <h2 id="dashboard-title">Situación de la red</h2>
-            <span className="dashboard-scenario-label">Escenario simulado</span>
+            <span className="dashboard-scenario-label">Datos de Oracle</span>
           </div>
 
           <p>
-            Una vista priorizada del estado operativo registrado para esta
-            demostración académica.
+            Una vista priorizada del estado operativo confirmado por la API.
           </p>
 
           <p className="dashboard-date">{currentDate}</p>
@@ -160,35 +200,39 @@ function Dashboard() {
             aria-live="polite"
             aria-atomic="true"
           >
-            {isRefreshing
-              ? "Actualizando vista de demostración…"
-              : `Vista actualizada a las ${lastUpdate.toLocaleTimeString(
+            {request.status === "loading"
+              ? "Actualizando datos operativos…"
+              : lastUpdate ? `Vista actualizada a las ${lastUpdate.toLocaleTimeString(
                   "es-GT",
                   {
                     hour: "2-digit",
                     minute: "2-digit",
                   },
-                )}`}
+                )}` : "Sin actualización confirmada"}
           </span>
 
           <button
             type="button"
             className="dashboard-refresh-button"
             onClick={handleRefresh}
-            disabled={isRefreshing}
-            aria-busy={isRefreshing}
+            disabled={request.status === "loading"}
+            aria-busy={request.status === "loading"}
           >
             <RefreshCw
               size={17}
               aria-hidden="true"
               className={
-                isRefreshing ? "dashboard-refresh-button__icon--spin" : ""
+                request.status === "loading" ? "dashboard-refresh-button__icon--spin" : ""
               }
             />
-            {isRefreshing ? "Actualizando…" : "Actualizar vista"}
+            {request.status === "loading" ? "Actualizando…" : "Actualizar vista"}
           </button>
         </div>
       </section>
+
+      <ApiState status={request.status} error={request.error} onRetry={handleRefresh} />
+
+      <div hidden={request.status !== "success"}>
 
       <section
         className="dashboard-situation-board"
@@ -220,7 +264,7 @@ function Dashboard() {
           <div className="dashboard-attention-zone__header">
             <div>
               <h3 id="attention-title">Requiere atención</h3>
-              <p>Incidentes registrados en el escenario actual.</p>
+              <p>Incidentes abiertos registrados en Oracle.</p>
             </div>
 
             <div
@@ -282,7 +326,7 @@ function Dashboard() {
                   {remainingIncidentCount === 1
                     ? "incidente adicional registrado"
                     : "incidentes adicionales registrados"}{" "}
-                  en el escenario.
+                  en el registro.
                 </p>
               )}
             </div>
@@ -305,7 +349,7 @@ function Dashboard() {
           <div className="dashboard-snapshot-zone__header">
             <div>
               <h3 id="snapshot-title">Estado registrado</h3>
-              <p>Instantánea de demostración</p>
+              <p>Instantánea operativa confirmada</p>
             </div>
 
             <span className="dashboard-condition-label">
@@ -315,7 +359,7 @@ function Dashboard() {
           </div>
 
           <p className="dashboard-condition-copy">
-            El escenario incluye demoras y servicio parcial en la red.
+            Las condiciones se derivan de los estados e incidentes registrados.
           </p>
 
           <div
@@ -423,7 +467,7 @@ function Dashboard() {
           <div className="dashboard-section-header">
             <div>
               <h3 id="trips-title">Próximos viajes programados</h3>
-              <p>Secuencia registrada para el escenario de hoy.</p>
+              <p>Secuencia cronológica disponible para la sesión.</p>
             </div>
 
             <button
@@ -493,7 +537,7 @@ function Dashboard() {
           <div className="dashboard-section-header">
             <div>
               <h3 id="passenger-title">Flujo estimado de pasajeros</h3>
-              <p>Lecturas registradas para esta demostración.</p>
+              <p>Valores agregados por línea desde Oracle.</p>
             </div>
 
             <button
@@ -513,7 +557,7 @@ function Dashboard() {
           </div>
 
           <p className="dashboard-chart-context">
-            Serie registrada de lunes a domingo
+            Distribución registrada por línea
           </p>
 
           <div
@@ -567,18 +611,17 @@ function Dashboard() {
           </div>
 
           <figcaption id="passenger-summary">
-            En la serie de siete días, el pico registrado es {passengerPeak.day},{" "}
-            {formatPassengers(passengerPeak.passengers)}. Mínimo registrado:{" "}
-            {passengerMinimum.day},{" "}
-            {formatPassengers(passengerMinimum.passengers)}.
+            {passengerPeak && passengerMinimum
+              ? `Mayor lectura: línea ${passengerPeak.day}, ${formatPassengers(passengerPeak.passengers)}. Menor lectura: línea ${passengerMinimum.day}, ${formatPassengers(passengerMinimum.passengers)}.`
+              : "El reporte autorizado no devolvió lecturas de pasajeros."}
           </figcaption>
 
           <div className="dashboard-sr-only">
             <table>
-              <caption>Valores diarios del flujo estimado de pasajeros</caption>
+              <caption>Pasajeros registrados por línea</caption>
               <thead>
                 <tr>
-                  <th>Día</th>
+                  <th>Línea</th>
                   <th>Pasajeros estimados</th>
                 </tr>
               </thead>
@@ -594,6 +637,7 @@ function Dashboard() {
           </div>
         </figure>
       </section>
+      </div>
     </div>
   );
 }

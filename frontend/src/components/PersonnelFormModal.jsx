@@ -1,14 +1,15 @@
 import { useEffect, useRef, useState } from "react";
 import { X } from "lucide-react";
 
-function getDefinitions(employeeOptions, roleOptions) {
+function getDefinitions(employeeOptions, roleOptions, modelOptions) {
   return {
     employees: {
       title: "Registrar empleado",
       description:
-        "Ingresa la información laboral y administrativa del empleado para esta sesión de demostración.",
+        "Ingresa la información laboral y administrativa que se guardará en Oracle.",
       fields: [
-        { name: "name", label: "Nombre completo", required: true },
+        { name: "firstNames", label: "Nombres", required: true },
+        { name: "lastNames", label: "Apellidos", required: true },
         {
           name: "birthDate",
           label: "Fecha de nacimiento",
@@ -16,6 +17,7 @@ function getDefinitions(employeeOptions, roleOptions) {
           required: true,
         },
         { name: "phone", label: "Teléfono", required: true },
+        { name: "address", label: "Dirección" },
         {
           name: "email",
           label: "Correo electrónico",
@@ -29,7 +31,7 @@ function getDefinitions(employeeOptions, roleOptions) {
           required: true,
         },
         {
-          name: "role",
+          name: "roleId",
           label: "Puesto",
           type: "select",
           options: roleOptions,
@@ -39,24 +41,17 @@ function getDefinitions(employeeOptions, roleOptions) {
           name: "salary",
           label: "Salario",
           type: "number",
-          min: "0",
+          min: "0.01",
           step: "0.01",
           required: true,
         },
-        {
-          name: "status",
-          label: "Estado laboral",
-          type: "select",
-          options: [
-            "Activo",
-            "De vacaciones",
-            "Permiso",
-            "Suspendido",
-            "Inactivo",
-          ],
-          required: true,
-        },
-        { name: "supervisor", label: "Supervisor" },
+        { name: "shiftCode", label: "Turno", type: "select", options: [
+          { value: "MATUTINO", label: "Matutino" },
+          { value: "VESPERTINO", label: "Vespertino" },
+          { value: "NOCTURNO", label: "Nocturno" },
+          { value: "ROTATIVO", label: "Rotativo" },
+        ], required: true },
+        { name: "supervisorId", label: "Supervisor", type: "select", options: employeeOptions },
       ],
     },
     roles: {
@@ -105,21 +100,21 @@ function getDefinitions(employeeOptions, roleOptions) {
           type: "time",
           required: true,
         },
-        { name: "workplace", label: "Lugar de trabajo", required: true },
+        { name: "placeType", label: "Tipo de lugar", type: "select", options: [
+          { value: "CENTRO_CONTROL", label: "Centro de control" },
+          { value: "ESTACION", label: "Estación" },
+          { value: "DEPOSITO", label: "Depósito" },
+          { value: "RUTA", label: "Ruta" },
+          { value: "TREN", label: "Tren" },
+        ], required: true },
+        { name: "placeId", label: "Identificador del lugar" },
         { name: "function", label: "Función asignada", required: true },
-        {
-          name: "attendance",
-          label: "Asistencia registrada",
-          type: "select",
-          options: ["Programado", "Presente", "Ausente", "Tarde"],
-          required: true,
-        },
       ],
     },
     certifications: {
       title: "Registrar certificación",
       description:
-        "Agrega un documento con el estado indicado, sin derivarlo de sus fechas.",
+        "Agrega una certificación persistente; Oracle asigna su estado inicial.",
       fields: [
         {
           name: "employeeId",
@@ -147,16 +142,10 @@ function getDefinitions(employeeOptions, roleOptions) {
           required: true,
         },
         {
-          name: "models",
-          label: "Modelos autorizados",
-          placeholder: "Ejemplo: R160, R179",
-        },
-        {
-          name: "status",
-          label: "Estado documental",
+          name: "modelId",
+          label: "Modelo autorizado",
           type: "select",
-          options: ["Vigente", "Próxima a vencer", "Vencida"],
-          required: true,
+          options: modelOptions,
         },
       ],
     },
@@ -174,6 +163,9 @@ export default function PersonnelFormModal({
   type = "employees",
   availableEmployees = [],
   availableRoles = [],
+  availableModels = [],
+  isSubmitting = false,
+  error = "",
   onClose,
   onSubmit,
 }) {
@@ -182,10 +174,11 @@ export default function PersonnelFormModal({
     label: `${employee.id} · ${employee.name}`,
   }));
   const roleOptions = availableRoles.map((role) => ({
-    value: typeof role === "string" ? role : role.name,
+    value: typeof role === "string" ? role : role.apiId,
     label: typeof role === "string" ? role : role.name,
   }));
-  const definitions = getDefinitions(employeeOptions, roleOptions);
+  const modelOptions = availableModels.map((model) => ({ value: model.idModelo, label: `${model.nombreModelo} · ${model.fabricante}` }));
+  const definitions = getDefinitions(employeeOptions, roleOptions, modelOptions);
   const definition = definitions[type] ?? definitions.employees;
   const dialogRef = useRef(null);
   const initialFocusRef = useRef(null);
@@ -327,12 +320,7 @@ export default function PersonnelFormModal({
     }
 
     if (type === "certifications") {
-      newRecord.models = formData.models
-        ? formData.models
-            .split(",")
-            .map((model) => model.trim())
-            .filter(Boolean)
-        : [];
+      newRecord.modelIds = formData.modelId ? [Number(formData.modelId)] : [];
     }
 
     onSubmit(newRecord);
@@ -420,7 +408,7 @@ export default function PersonnelFormModal({
           </button>
         </header>
 
-        <form className="personnel-modal-form" onSubmit={handleSubmit}>
+        <form className="personnel-modal-form" onSubmit={handleSubmit} aria-busy={isSubmitting || undefined}>
           <div className="personnel-modal-fields">
             {definition.fields.map((field, index) => (
               <label
@@ -441,16 +429,19 @@ export default function PersonnelFormModal({
             ))}
           </div>
 
+          {error && <p className="personnel-form-error" role="alert">{error}</p>}
+
           <footer className="personnel-modal-actions">
             <button
               type="button"
               className="personnel-secondary-button"
               onClick={onClose}
+              disabled={isSubmitting}
             >
               Cancelar
             </button>
-            <button type="submit" className="personnel-primary-button">
-              Guardar registro
+            <button type="submit" className="personnel-primary-button" disabled={isSubmitting}>
+              {isSubmitting ? "Guardando…" : "Guardar registro"}
             </button>
           </footer>
         </form>

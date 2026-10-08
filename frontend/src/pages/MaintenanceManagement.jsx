@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   CirclePlus,
   PackageSearch,
@@ -7,19 +7,15 @@ import {
   Wrench,
   X,
 } from "lucide-react";
-import {
-  equipment,
-  maintenanceOrders,
-  spareParts,
-} from "../data/maintenanceData";
 import MaintenanceFormModal from "../components/MaintenanceFormModal";
 import ConfirmDeleteModal from "../components/ConfirmDeleteModal";
 import DeleteRecordAction, {
   DeleteRecordNotice,
 } from "../components/DeleteRecordAction";
-import useDeleteRecord, {
-  getSelectionAfterDelete,
-} from "../hooks/useDeleteRecord";
+import useDeleteRecord from "../hooks/useDeleteRecord";
+import ApiState from "../components/ApiState";
+import { hasAnyRole, useAuthSession } from "../auth";
+import { cancelOrder, createEquipment, createOrder, createPart, getMaintenance, retireEquipment } from "../services/maintenanceService";
 import "../styles/maintenance.css";
 
 const tabs = [
@@ -226,15 +222,6 @@ function ConditionMarker({ condition }) {
       {displayRecordedValue(condition)}
     </span>
   );
-}
-
-function createNextId(prefix, records) {
-  const highestNumber = records.reduce((highest, record) => {
-    const number = Number(String(record.id ?? "").replace(/\D/g, ""));
-    return Number.isNaN(number) ? highest : Math.max(highest, number);
-  }, 0);
-
-  return prefix + "-" + String(highestNumber + 1).padStart(3, "0");
 }
 
 function recordMatchesFilters(record, type, filters) {
@@ -983,7 +970,7 @@ function MaintenanceInspector({ type, record, onDelete }) {
             </div>
           </header>
 
-          <div className="record-delete-toolbar">
+          {type !== "parts" && <div className="record-delete-toolbar">
             <DeleteRecordAction
               id={record.id}
               label={`${tabInformation[type].singular} ${displayRecordedValue(title)}`}
@@ -991,7 +978,7 @@ function MaintenanceInspector({ type, record, onDelete }) {
               onRequest={onDelete}
               variant="labeled"
             />
-          </div>
+          </div>}
 
           <div className="maintenance-inspector__body">
             {type === "orders" && <OrderInspector record={record} />}
@@ -1016,7 +1003,9 @@ function MaintenanceInspector({ type, record, onDelete }) {
 }
 
 function MaintenanceManagement() {
-  const [activeTab, setActiveTab] = useState("orders");
+  const session = useAuthSession();
+  const canWrite = hasAnyRole(session, ["ADMIN", "MANTENIMIENTO"]);
+  const [activeTab, setActiveTab] = useState(() => canWrite ? "orders" : "equipment");
   const [filters, setFilters] = useState({
     orders: { search: "", status: "Todos" },
     equipment: { search: "", status: "Todos" },
@@ -1025,15 +1014,32 @@ function MaintenanceManagement() {
   const [showForm, setShowForm] = useState(false);
   const [creationAnnouncement, setCreationAnnouncement] = useState("");
   const [selectionAnnouncement, setSelectionAnnouncement] = useState("");
-  const [orderRows, setOrderRows] = useState(maintenanceOrders);
-  const [equipmentRows, setEquipmentRows] = useState(equipment);
-  const [partRows, setPartRows] = useState(spareParts);
+  const [orderRows, setOrderRows] = useState([]);
+  const [equipmentRows, setEquipmentRows] = useState([]);
+  const [partRows, setPartRows] = useState([]);
+  const [employees, setEmployees] = useState([]);
+  const [request, setRequest] = useState({ status: "loading", error: null });
+  const [reloadVersion, setReloadVersion] = useState(0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formError, setFormError] = useState("");
   const [selectedIds, setSelectedIds] = useState({
-    orders: getInitialSelection("orders", maintenanceOrders),
-    equipment: getInitialSelection("equipment", equipment),
-    parts: getInitialSelection("parts", spareParts),
+    orders: null, equipment: null, parts: null,
   });
   const tabRefs = useRef([]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    getMaintenance({ signal: controller.signal, includeRestricted: canWrite }).then((data) => {
+      setOrderRows(data.orders); setEquipmentRows(data.equipment); setPartRows(data.parts); setEmployees(data.employees);
+      setSelectedIds((current) => ({
+        orders: current.orders && data.orders.some((row) => row.id === current.orders) ? current.orders : getInitialSelection("orders", data.orders),
+        equipment: current.equipment && data.equipment.some((row) => row.id === current.equipment) ? current.equipment : getInitialSelection("equipment", data.equipment),
+        parts: current.parts && data.parts.some((row) => row.id === current.parts) ? current.parts : getInitialSelection("parts", data.parts),
+      }));
+      setRequest({ status: "success", error: null });
+    }).catch((error) => { if (error?.name !== "AbortError") setRequest({ status: "error", error }); });
+    return () => controller.abort();
+  }, [canWrite, reloadVersion]);
 
   const records = useMemo(
     () => ({
@@ -1069,6 +1075,7 @@ function MaintenanceManagement() {
   });
 
   function handleTabChange(tabId) {
+    if (!canWrite && tabId !== "equipment") return;
     setActiveTab(tabId);
     setSelectionAnnouncement("");
   }
@@ -1095,6 +1102,7 @@ function MaintenanceManagement() {
     }
 
     event.preventDefault();
+    if (!canWrite) nextIndex = tabs.findIndex((tab) => tab.id === "equipment");
     handleTabChange(tabs[nextIndex].id);
     window.requestAnimationFrame(() => {
       tabRefs.current[nextIndex]?.focus();
@@ -1150,86 +1158,26 @@ function MaintenanceManagement() {
     );
   }
 
-  function handleSave(newRecord) {
-    let createdRecord;
-
-    if (activeTab === "orders") {
-      createdRecord = {
-        ...newRecord,
-        id: createNextId("MAN", orderRows),
-      };
-      setOrderRows((currentRows) => [createdRecord, ...currentRows]);
-    } else if (activeTab === "equipment") {
-      createdRecord = {
-        ...newRecord,
-        id: createNextId("EQ", equipmentRows),
-      };
-      setEquipmentRows((currentRows) => [createdRecord, ...currentRows]);
-    } else {
-      createdRecord = {
-        ...newRecord,
-        id: createNextId("REP", partRows),
-      };
-      setPartRows((currentRows) => [createdRecord, ...currentRows]);
-    }
-
-    const isVisible = recordMatchesFilters(
-      createdRecord,
-      activeTab,
-      activeFilters,
-    );
-
-    if (isVisible) {
-      setSelectedIds((currentIds) => ({
-        ...currentIds,
-        [activeTab]: createdRecord.id,
-      }));
-      setSelectionAnnouncement(
-        getSelectionAnnouncement(activeTab, createdRecord),
-      );
-    }
-
-    setCreationAnnouncement(
-      "El registro " +
-        createdRecord.id +
-        " se agregó solo a esta sesión de demostración; no se almacena de forma persistente." +
-        (isVisible
-          ? ""
-          : " Los filtros actuales no incluyen el nuevo registro."),
-    );
-    setShowForm(false);
+  async function handleSave(newRecord) {
+    if (isSubmitting) return;
+    setIsSubmitting(true); setFormError("");
+    try {
+      if (activeTab === "orders") await createOrder(newRecord);
+      else if (activeTab === "equipment") await createEquipment(newRecord);
+      else await createPart(newRecord);
+      setCreationAnnouncement("El registro se guardó correctamente en Oracle.");
+      setShowForm(false);
+      setRequest({ status: "loading", error: null });
+      setReloadVersion((version) => version + 1);
+    } catch (error) { setFormError(error?.message ?? "No fue posible guardar el registro."); }
+    finally { setIsSubmitting(false); }
   }
 
-  function handleDeleteRecord({ id }) {
-    const nextSelection = getSelectionAfterDelete(
-      orderedRecords,
-      id,
-      selectedRecord?.id,
-    );
-
-    if (activeTab === "orders") {
-      setOrderRows((currentRows) =>
-        currentRows.filter((record) => record.id !== id),
-      );
-    } else if (activeTab === "equipment") {
-      setEquipmentRows((currentRows) =>
-        currentRows.filter((record) => record.id !== id),
-      );
-    } else {
-      setPartRows((currentRows) =>
-        currentRows.filter((record) => record.id !== id),
-      );
-    }
-
-    setSelectedIds((currentIds) => ({
-      ...currentIds,
-      [activeTab]: nextSelection,
-    }));
-    setSelectionAnnouncement(
-      nextSelection
-        ? `Registro ${nextSelection} seleccionado después de eliminar el registro.`
-        : "No quedan registros visibles para seleccionar.",
-    );
+  async function handleDeleteRecord({ id }) {
+    if (activeTab === "orders") await cancelOrder(id);
+    else if (activeTab === "equipment") await retireEquipment(id);
+    setRequest({ status: "loading", error: null });
+    setReloadVersion((version) => version + 1);
   }
 
   return (
@@ -1241,7 +1189,7 @@ function MaintenanceManagement() {
         <div className="maintenance-heading__copy">
           <div className="maintenance-context" aria-label="Contexto">
             <span>Banco de servicio</span>
-            <span>Datos de demostración</span>
+            <span>Datos persistidos en Oracle</span>
           </div>
           <h2 id="maintenance-page-title">Mantenimiento</h2>
           <p>
@@ -1253,6 +1201,8 @@ function MaintenanceManagement() {
         <button
           type="button"
           className="maintenance-primary-button"
+          disabled={!canWrite}
+          title={!canWrite ? "Tu rol permite consultar, pero no modificar mantenimiento" : undefined}
           onClick={() => {
             setCreationAnnouncement("");
             setShowForm(true);
@@ -1267,6 +1217,11 @@ function MaintenanceManagement() {
         message={deletion.notice}
         onDismiss={deletion.dismissNotice}
       />
+
+      <ApiState status={request.status} error={request.error} onRetry={() => {
+        setRequest({ status: "loading", error: null });
+        setReloadVersion((version) => version + 1);
+      }} />
 
       {creationAnnouncement && (
         <div
@@ -1289,6 +1244,7 @@ function MaintenanceManagement() {
       <section
         className="maintenance-workbench"
         aria-label="Banco de servicio de mantenimiento"
+        hidden={request.status !== "success"}
       >
         <div
           className="maintenance-tabs"
@@ -1306,6 +1262,8 @@ function MaintenanceManagement() {
                 aria-selected={isActive}
                 aria-controls={"maintenance-panel-" + tab.id}
                 tabIndex={isActive ? 0 : -1}
+                disabled={!canWrite && tab.id !== "equipment"}
+                title={!canWrite && tab.id !== "equipment" ? "Tu rol no permite consultar este registro" : undefined}
                 className={
                   "maintenance-tab" +
                   (isActive ? " maintenance-tab--active" : "")
@@ -1361,7 +1319,7 @@ function MaintenanceManagement() {
                   <MaintenanceInspector
                     type={activeTab}
                     record={selectedRecord}
-                    onDelete={deletion.requestDelete}
+                    onDelete={canWrite ? deletion.requestDelete : undefined}
                   />
                 </div>
               </>
@@ -1382,7 +1340,13 @@ function MaintenanceManagement() {
       {showForm && (
         <MaintenanceFormModal
           type={activeTab}
-          onClose={() => setShowForm(false)}
+          equipmentOptions={equipmentRows}
+          technicianOptions={employees}
+          isSubmitting={isSubmitting}
+          error={formError}
+          onClose={() => {
+            if (!isSubmitting) setShowForm(false);
+          }}
           onSave={handleSave}
         />
       )}

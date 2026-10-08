@@ -753,6 +753,50 @@
   line-height: 1.5;
 }
 
+.briefing-report-table-wrap {
+  max-width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--auth-border);
+  border-radius: 9px;
+  scrollbar-color: var(--auth-scroll-thumb) var(--auth-scroll-track);
+}
+
+.briefing-report-table {
+  width: 100%;
+  min-width: 560px;
+  border-collapse: collapse;
+  color: var(--auth-text-secondary);
+  font-size: 10px;
+}
+
+.briefing-report-table caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+}
+
+.briefing-report-table th,
+.briefing-report-table td {
+  padding: 9px 10px;
+  text-align: left;
+  border-bottom: 1px solid var(--auth-border);
+  white-space: nowrap;
+}
+
+.briefing-report-table th {
+  color: var(--auth-text-primary);
+  font-size: 8px;
+  letter-spacing: 0.045em;
+  text-transform: uppercase;
+  background: var(--auth-command);
+}
+
+.briefing-report-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
 .briefing-inspector--empty {
   display: grid;
   min-height: 390px;

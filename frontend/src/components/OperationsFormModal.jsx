@@ -1,10 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import { X } from "lucide-react";
-import {
-  availableDrivers,
-  availableRoutes,
-  availableTrains,
-} from "../data/operationsData";
 
 function getCurrentDate() {
   return new Date().toISOString().slice(0, 10);
@@ -16,12 +11,6 @@ const configurations = {
     description:
       "Asigna una ruta, un tren y un conductor para el viaje.",
     fields: [
-      {
-        name: "id",
-        label: "Número de viaje",
-        placeholder: "Ejemplo: VJ-2406",
-        required: true,
-      },
       {
         name: "route",
         label: "Ruta",
@@ -43,23 +32,16 @@ const configurations = {
         required: true,
       },
       {
-        name: "scheduledArrival",
-        label: "Hora programada de llegada",
-        type: "time",
-        defaultValue: "09:00",
-        required: true,
-      },
-      {
         name: "train",
         label: "Tren asignado",
         type: "train-select",
-        required: true,
+        required: false,
       },
       {
         name: "driver",
         label: "Conductor asignado",
         type: "driver-select",
-        required: true,
+        required: false,
       },
       {
         name: "passengers",
@@ -68,19 +50,6 @@ const configurations = {
         defaultValue: "0",
         min: "0",
         required: true,
-      },
-      {
-        name: "status",
-        label: "Estado inicial",
-        type: "select",
-        defaultValue: "Programado",
-        options: [
-          "Programado",
-          "En abordaje",
-          "En curso",
-          "Retrasado",
-          "Cancelado",
-        ],
       },
     ],
   },
@@ -91,12 +60,6 @@ const configurations = {
       "Configura los días, la frecuencia y la vigencia del servicio.",
     fields: [
       {
-        name: "id",
-        label: "Código del horario",
-        placeholder: "Ejemplo: HOR-006",
-        required: true,
-      },
-      {
         name: "route",
         label: "Ruta asociada",
         type: "route-select",
@@ -106,13 +69,12 @@ const configurations = {
         name: "days",
         label: "Días de operación",
         type: "select",
-        defaultValue: "Lunes a viernes",
+        defaultValue: "LABORAL",
         options: [
-          "Lunes a viernes",
-          "Fines de semana",
-          "Todos los días",
-          "Días festivos",
-          "Fechas especiales",
+          { value: "LABORAL", label: "Lunes a viernes" },
+          { value: "FIN_SEMANA", label: "Fin de semana" },
+          { value: "TODOS", label: "Todos los días" },
+          { value: "FESTIVO", label: "Días festivos" },
         ],
       },
       {
@@ -141,8 +103,13 @@ const configurations = {
         name: "service",
         label: "Tipo de servicio",
         type: "select",
-        defaultValue: "Local",
-        options: ["Local", "Expreso", "Nocturno", "Especial"],
+        defaultValue: "LOCAL",
+        options: [
+          { value: "LOCAL", label: "Local" },
+          { value: "EXPRESO", label: "Expreso" },
+          { value: "NOCTURNO", label: "Nocturno" },
+          { value: "ESPECIAL", label: "Especial" },
+        ],
       },
       {
         name: "startDate",
@@ -155,28 +122,21 @@ const configurations = {
         name: "endDate",
         label: "Finalización de vigencia",
         type: "date",
-        defaultValue: "2026-12-31",
-        required: true,
-      },
-      {
-        name: "status",
-        label: "Estado",
-        type: "select",
-        defaultValue: "Vigente",
-        options: ["Vigente", "Servicio especial"],
+        defaultValue: "",
+        required: false,
       },
     ],
   },
 };
 
-function getInitialValues(fields) {
+function getInitialValues(fields, routes, trains, drivers) {
   return fields.reduce((values, field) => {
     if (field.type === "route-select") {
-      values[field.name] = availableRoutes[0]?.id ?? "";
+      values[field.name] = String(routes[0]?.idRuta ?? "");
     } else if (field.type === "train-select") {
-      values[field.name] = availableTrains[0] ?? "";
+      values[field.name] = trains[0]?.codigoTren ?? "";
     } else if (field.type === "driver-select") {
-      values[field.name] = availableDrivers[0] ?? "";
+      values[field.name] = String(drivers[0]?.idEmpleado ?? "");
     } else {
       values[field.name] = field.defaultValue ?? "";
     }
@@ -185,24 +145,40 @@ function getInitialValues(fields) {
   }, {});
 }
 
-function OperationsFormModal({ type, onClose, onSubmit }) {
+function OperationsFormModal({
+  type,
+  routes = [],
+  trains = [],
+  drivers = [],
+  isSubmitting = false,
+  error = "",
+  onClose,
+  onSubmit,
+}) {
   const configuration = configurations[type];
   const dialogRef = useRef(null);
   const initialFocusRef = useRef(null);
 
   const [formValues, setFormValues] = useState(() =>
-    getInitialValues(configuration.fields),
+    getInitialValues(configuration.fields, routes, trains, drivers),
   );
 
   useEffect(() => {
     const previouslyFocusedElement = document.activeElement;
     const page = document.querySelector(".operations-page");
-    const backgroundElements = page
+    const shellBackgroundElements = Array.from(
+      document.querySelectorAll(".app-shell > .sidebar, .main-area > .topbar"),
+    );
+    const pageBackgroundElements = page
       ? Array.from(page.children).filter(
           (element) =>
             !element.classList.contains("operations-modal-backdrop"),
         )
       : [];
+    const backgroundElements = [
+      ...shellBackgroundElements,
+      ...pageBackgroundElements,
+    ];
     const backgroundState = backgroundElements.map((element) => ({
       element,
       hadInert: element.hasAttribute("inert"),
@@ -315,15 +291,16 @@ function OperationsFormModal({ type, onClose, onSubmit }) {
   function handleSubmit(event) {
     event.preventDefault();
 
-    const selectedRoute = availableRoutes.find(
-      (route) => route.id === formValues.route,
+    const selectedRoute = routes.find(
+      (route) => String(route.idRuta) === formValues.route,
     );
 
     if (type === "trips") {
       onSubmit({
         ...formValues,
-        id: formValues.id.toUpperCase(),
-        line: selectedRoute?.line ?? "",
+        routeId: Number(formValues.route),
+        line: selectedRoute?.idLinea ?? "",
+        driverId: formValues.driver ? Number(formValues.driver) : null,
         actualDeparture: "",
         actualArrival: "",
         passengers: Number(formValues.passengers),
@@ -333,8 +310,9 @@ function OperationsFormModal({ type, onClose, onSubmit }) {
     if (type === "schedules") {
       onSubmit({
         ...formValues,
-        id: formValues.id.toUpperCase(),
-        line: selectedRoute?.line ?? "",
+        routeId: Number(formValues.route),
+        serviceCode: formValues.service,
+        line: selectedRoute?.idLinea ?? "",
         frequency: Number(formValues.frequency),
       });
     }
@@ -353,11 +331,11 @@ function OperationsFormModal({ type, onClose, onSubmit }) {
     if (field.type === "select") {
       return (
         <select {...commonProperties}>
-          {field.options.map((option) => (
-            <option value={option} key={option}>
-              {option}
-            </option>
-          ))}
+          {field.options.map((option) => {
+            const value = typeof option === "string" ? option : option.value;
+            const label = typeof option === "string" ? option : option.label;
+            return <option value={value} key={value}>{label}</option>;
+          })}
         </select>
       );
     }
@@ -365,9 +343,9 @@ function OperationsFormModal({ type, onClose, onSubmit }) {
     if (field.type === "route-select") {
       return (
         <select {...commonProperties}>
-          {availableRoutes.map((route) => (
-            <option value={route.id} key={route.id}>
-              {route.id} - Línea {route.line}
+          {routes.map((route) => (
+            <option value={route.idRuta} key={route.idRuta}>
+              {route.codigoRuta} - Línea {route.idLinea}
             </option>
           ))}
         </select>
@@ -377,9 +355,10 @@ function OperationsFormModal({ type, onClose, onSubmit }) {
     if (field.type === "train-select") {
       return (
         <select {...commonProperties}>
-          {availableTrains.map((train) => (
-            <option value={train} key={train}>
-              {train}
+          <option value="">Sin asignar</option>
+          {trains.map((train) => (
+            <option value={train.codigoTren} key={train.codigoTren}>
+              {train.codigoTren}
             </option>
           ))}
         </select>
@@ -389,9 +368,10 @@ function OperationsFormModal({ type, onClose, onSubmit }) {
     if (field.type === "driver-select") {
       return (
         <select {...commonProperties}>
-          {availableDrivers.map((driver) => (
-            <option value={driver} key={driver}>
-              {driver}
+          <option value="">Sin asignar</option>
+          {drivers.map((driver) => (
+            <option value={driver.idEmpleado} key={driver.idEmpleado}>
+              {driver.nombres} {driver.apellidos}
             </option>
           ))}
         </select>
@@ -446,7 +426,7 @@ function OperationsFormModal({ type, onClose, onSubmit }) {
           </button>
         </header>
 
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} aria-busy={isSubmitting || undefined}>
           <div className="operations-form-grid">
             {configuration.fields.map((field, index) => (
               <label
@@ -468,11 +448,14 @@ function OperationsFormModal({ type, onClose, onSubmit }) {
             ))}
           </div>
 
+          {error && <p className="operations-form-error" role="alert">{error}</p>}
+
           <footer className="operations-modal__footer">
             <button
               type="button"
               className="operations-modal__cancel"
               onClick={onClose}
+              disabled={isSubmitting}
             >
               Cancelar
             </button>
@@ -480,8 +463,9 @@ function OperationsFormModal({ type, onClose, onSubmit }) {
             <button
               type="submit"
               className="operations-modal__save"
+              disabled={isSubmitting}
             >
-              Guardar registro
+              {isSubmitting ? "Guardando…" : "Guardar registro"}
             </button>
           </footer>
         </form>

@@ -21,13 +21,19 @@ import DeleteRecordAction, {
   DeleteRecordNotice,
 } from "../components/DeleteRecordAction";
 import useDeleteRecord from "../hooks/useDeleteRecord";
-import {
-  metroLines as demoLines,
-  metroRoutes,
-  metroStations,
-} from "../data/networkData";
+import { hasAnyRole, useAuthSession } from "../auth";
 import { ApiError } from "../services/apiClient";
-import { getLines } from "../services/lineService";
+import {
+  createRoute,
+  createLine,
+  createStation,
+  deactivateLine,
+  deactivateRoute,
+  deactivateStation,
+  getLines,
+  getRoutes,
+  getStations,
+} from "../services/lineService";
 import "../styles/network.css";
 
 const entityTabs = [
@@ -38,11 +44,12 @@ const entityTabs = [
 
 const statusOptions = {
   lines: ["Todos", "Operativa", "Suspendida", "Inactiva"],
-  stations: ["Todos", "Operativa", "Mantenimiento"],
-  routes: ["Todos", "Activa", "Con demoras", "Servicio parcial"],
+  stations: ["Todos", "Operativa", "En mantenimiento", "Cerrada"],
+  routes: ["Todos", "Activa", "Suspendida", "Inactiva"],
 };
 
 const actionLabels = {
+  lines: "Registrar línea",
   stations: "Registrar estación",
   routes: "Registrar ruta",
 };
@@ -220,6 +227,8 @@ function NetworkToolbar({
 }
 
 function NetworkManagement() {
+  const session = useAuthSession();
+  const canWrite = hasAnyRole(session, ["ADMIN", "OPERACIONES"]);
   const [activeTab, setActiveTab] = useState("lines");
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("Todos");
@@ -231,16 +240,24 @@ function NetworkManagement() {
     error: "",
   });
   const [lineRequestVersion, setLineRequestVersion] = useState(0);
-  const [stations, setStations] = useState(metroStations);
-  const [routes, setRoutes] = useState(metroRoutes);
+  const [stations, setStations] = useState([]);
+  const [routes, setRoutes] = useState([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formError, setFormError] = useState("");
   const tabRefs = useRef([]);
 
   useEffect(() => {
     const controller = new AbortController();
 
-    getLines({ signal: controller.signal })
-      .then((loadedLines) => {
+    Promise.all([
+      getLines({ signal: controller.signal }),
+      getStations({ signal: controller.signal }),
+      getRoutes({ signal: controller.signal }),
+    ])
+      .then(([loadedLines, loadedStations, loadedRoutes]) => {
         setLines(loadedLines);
+        setStations(loadedStations);
+        setRoutes(loadedRoutes);
         setLineRequest({ status: "success", error: "" });
       })
       .catch((requestError) => {
@@ -335,40 +352,59 @@ function NetworkManagement() {
     requestAnimationFrame(() => tabRefs.current[nextIndex]?.focus());
   }
 
-  function handleCreateRecord(newRecord) {
-    if (activeTab === "stations") {
-      setStations((currentStations) => [...currentStations, newRecord]);
+  async function handleCreateRecord(newRecord) {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    setFormError("");
+    try {
+      if (activeTab === "lines") {
+        await createLine({
+          idLinea: newRecord.id.toUpperCase(), nombre: newRecord.name,
+          colorMapa: newRecord.color, idTerminalOrigen: Number(newRecord.originId),
+          idTerminalDestino: Number(newRecord.destinationId), tipoServicio: newRecord.serviceCode,
+          fechaInauguracion: null, longitudKm: newRecord.length,
+          operadorResponsable: "Metro NY", estadoOperativo: "ACTIVA",
+        });
+      } else if (activeTab === "stations") {
+        await createStation({
+          codigoEstacion: newRecord.id.toUpperCase(), nombre: newRecord.name,
+          direccion: newRecord.address, distrito: newRecord.borough,
+          latitud: null, longitud: null, fechaInauguracion: null,
+          cantidadAccesos: newRecord.accesses, cantidadPlataformas: newRecord.platforms,
+          tipoEstacion: newRecord.stationType, estadoOperativo: "OPERATIVA",
+          horaApertura: "00:00", horaCierre: "23:59", accesibleDiscapacidad: newRecord.accessible,
+        });
+      } else if (activeTab === "routes") {
+        await createRoute({
+          codigoRuta: newRecord.id.toUpperCase(), idLinea: newRecord.line,
+          idEstacionOrigen: Number(newRecord.originId), idEstacionDestino: Number(newRecord.destinationId),
+          sentido: newRecord.directionCode, tipoServicio: newRecord.serviceCode,
+          distanciaTotalKm: newRecord.distance, duracionEstimadaMin: newRecord.duration,
+          fechaVigenciaInicio: null, fechaVigenciaFin: null,
+        });
+      }
+      setIsFormOpen(false);
+      retryLines();
+    } catch (error) {
+      setFormError(error?.message ?? "No fue posible guardar el registro.");
+    } finally {
+      setIsSubmitting(false);
     }
-
-    if (activeTab === "routes") {
-      setRoutes((currentRoutes) => [...currentRoutes, newRecord]);
-    }
-
-    setIsFormOpen(false);
   }
 
-  function handleDeleteRecord({ id }) {
+  async function handleDeleteRecord({ record }) {
     if (activeTab === "lines") {
-      return;
+      await deactivateLine(record.id);
+    } else if (activeTab === "stations") {
+      await deactivateStation(record.apiId);
+    } else if (activeTab === "routes") {
+      await deactivateRoute(record.apiId);
     }
-
-    if (activeTab === "stations") {
-      setStations((currentStations) =>
-        currentStations.filter((station) => station.id !== id),
-      );
-      return;
-    }
-
-    setRoutes((currentRoutes) =>
-      currentRoutes.filter((route) => route.id !== id),
-    );
+    retryLines();
   }
 
   function lineForId(lineId) {
-    return (
-      lines.find((line) => line.id === lineId) ??
-      demoLines.find((line) => line.id === lineId)
-    );
+    return lines.find((line) => line.id === lineId);
   }
 
   function retryLines() {
@@ -381,17 +417,8 @@ function NetworkManagement() {
       <header className="network-heading">
         <div className="network-heading__copy">
           <div className="network-context" aria-label="Contexto de los datos">
-            {activeTab === "lines" ? (
-              <>
-                <span>Fuente: API protegida</span>
-                <span>Modo solo lectura</span>
-              </>
-            ) : (
-              <>
-                <span>Escenario simulado</span>
-                <span>Datos de demostración</span>
-              </>
-            )}
+            <span>Fuente: API protegida</span>
+            <span>Persistencia Oracle</span>
           </div>
           <p className="network-heading__eyebrow">Mesa de topología de rutas</p>
           <h2 id="network-page-title">Red y topología registrada</h2>
@@ -400,21 +427,16 @@ function NetworkManagement() {
           </p>
         </div>
 
-        {activeTab === "lines" ? (
-          <div className="network-read-only-control" role="note">
-            <LockKeyhole size={16} aria-hidden="true" />
-            Líneas en modo consulta
-          </div>
-        ) : (
-          <button
-            type="button"
-            className="network-primary-button"
-            onClick={() => setIsFormOpen(true)}
-          >
-            <CirclePlus size={17} aria-hidden="true" />
-            {actionLabels[activeTab]}
-          </button>
-        )}
+        <button
+          type="button"
+          className="network-primary-button"
+          onClick={() => setIsFormOpen(true)}
+          disabled={!canWrite}
+          title={!canWrite ? "Tu rol permite consultar, pero no modificar la red" : undefined}
+        >
+          <CirclePlus size={17} aria-hidden="true" />
+          {actionLabels[activeTab]}
+        </button>
       </header>
 
       <DeleteRecordNotice
@@ -579,9 +601,14 @@ function NetworkManagement() {
 
                   <div className="network-read-only-notice" role="note">
                     <LockKeyhole size={15} aria-hidden="true" />
-                    <span>
-                      Consulta protegida. Crear, editar y eliminar líneas todavía no está disponible.
-                    </span>
+                    <span>Los cambios se validan por rol y se persisten en Oracle.</span>
+                    <DeleteRecordAction
+                      id={effectiveSelectedLine.id}
+                      label={`línea ${effectiveSelectedLine.id}: ${effectiveSelectedLine.name}`}
+                      record={effectiveSelectedLine}
+                      onRequest={canWrite ? deletion.requestDelete : undefined}
+                      variant="labeled"
+                    />
                   </div>
 
                   <section className="network-terminal-section" aria-labelledby="terminal-section-title">
@@ -756,7 +783,7 @@ function NetworkManagement() {
                               id={station.id}
                               label={`estación ${station.name}`}
                               record={station}
-                              onRequest={deletion.requestDelete}
+                              onRequest={canWrite ? deletion.requestDelete : undefined}
                             />
                           </td>
                         </tr>
@@ -774,7 +801,7 @@ function NetworkManagement() {
                   </strong>
                   <span>
                     {stations.length === 0
-                      ? "Los registros originales reaparecerán al recargar."
+                      ? "Oracle no devolvió estaciones registradas."
                       : "Ajusta la búsqueda o el filtro de estado."}
                   </span>
                 </div>
@@ -868,7 +895,7 @@ function NetworkManagement() {
                                 id={route.id}
                                 label={`ruta ${route.id}: ${route.origin} a ${route.destination}`}
                                 record={route}
-                                onRequest={deletion.requestDelete}
+                                onRequest={canWrite ? deletion.requestDelete : undefined}
                               />
                             </td>
                           </tr>
@@ -887,7 +914,7 @@ function NetworkManagement() {
                   </strong>
                   <span>
                     {routes.length === 0
-                      ? "Los registros originales reaparecerán al recargar."
+                      ? "Oracle no devolvió rutas registradas."
                       : "Ajusta la búsqueda o el filtro de estado."}
                   </span>
                 </div>
@@ -901,7 +928,12 @@ function NetworkManagement() {
         <NetworkFormModal
           type={activeTab}
           availableLines={lines}
-          onClose={() => setIsFormOpen(false)}
+          availableStations={stations}
+          isSubmitting={isSubmitting}
+          error={formError}
+          onClose={() => {
+            if (!isSubmitting) setIsFormOpen(false);
+          }}
           onSubmit={handleCreateRecord}
         />
       )}

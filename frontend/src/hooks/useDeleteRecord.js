@@ -73,7 +73,7 @@ export default function useDeleteRecord({ deleteRecord, recordExists }) {
       pendingRef.current = null;
       setPendingDelete(null);
       setNotice(
-        `El registro “${target.label}” ya no está disponible en esta sesión. No se realizó ninguna eliminación.`,
+        `El registro “${target.label}” ya no está disponible. No se aplicó ningún cambio.`,
       );
       return;
     }
@@ -86,12 +86,14 @@ export default function useDeleteRecord({ deleteRecord, recordExists }) {
       await currentOptions.deleteRecord(target);
       pendingRef.current = null;
       setNotice(
-        `El registro “${target.label}” se eliminó de esta sesión de demostración. Los datos originales no fueron modificados.`,
+        `El cambio de estado de “${target.label}” fue confirmado por Oracle.`,
       );
       setPendingDelete(null);
-    } catch {
+    } catch (requestError) {
       setError(
-        "No se pudo eliminar el registro. Inténtalo de nuevo o cancela para conservarlo.",
+        requestError instanceof Error && requestError.message
+          ? requestError.message
+          : "No se pudo confirmar el cambio. Inténtalo de nuevo.",
       );
     } finally {
       deletingRef.current = false;
